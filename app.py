@@ -272,18 +272,24 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
           key=f"upload_{nome}"
            )
 
-            if arquivo.name.endswith(".csv") or arquivo.name.endswith(".tsv"):
-              df_importado = pd.read_csv(arquivo)
-            else:
-              df_importado = pd.read_excel(arquivo)
+            if arquivo:
+    if arquivo.name.endswith(".csv") or arquivo.name.endswith(".tsv"):
+        df_importado = pd.read_csv(arquivo)
+    else:
+        df_importado = pd.read_excel(arquivo)
 
-                colunas_esperadas = ["Descrição", "Categoria", "Data", "Valor", "Observações"]
-                for col in colunas_esperadas:
-                    if col not in df_importado.columns:
-                        df_importado[col] = None
+    # Normaliza nomes das colunas
+    df_importado.columns = df_importado.columns.str.strip().str.title()
 
-                st.session_state.planilhas[nome] = df_importado
-                st.success("Planilha importada com sucesso!")
+    # Garante colunas esperadas
+    colunas_esperadas = ["Descrição", "Categoria", "Data", "Valor", "Observações"]
+    for col in colunas_esperadas:
+        if col not in df_importado.columns:
+            df_importado[col] = None
+
+       
+    st.session_state.planilhas[nome] = df_importado
+    st.success("Planilha importada com sucesso!")
 
             df = st.session_state.planilhas[nome]
 

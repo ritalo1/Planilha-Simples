@@ -271,72 +271,72 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
 
         elif pagina == "Planilhas":
 
-            st.markdown(f"<h2 style='color:#4CAF50;'>🧾 Planilha — {nome}</h2>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='color:#4CAF50;'>🧾 Planilha — {nome}</h2>", unsafe_allow_html=True)
 
-            st.subheader("📥 Importar planilha Excel")
-            arquivo = st.file_uploader(
-                "Selecione um arquivo",
-                type=["xlsx", "xls", "xlsm", "ods", "csv", "tsv"],
-                key=f"upload_{nome}"
-            )
+    st.subheader("📥 Importar planilha Excel")
+    arquivo = st.file_uploader(
+        "Selecione um arquivo",
+        type=["xlsx", "xls", "xlsm", "ods", "csv", "tsv"],
+        key=f"upload_{nome}"
+    )
 
-            if arquivo:
-    nome_arquivo = arquivo.name.lower()
+    if arquivo:
+        nome_arquivo = arquivo.name.lower()
 
-    # CSV / TSV
-    if nome_arquivo.endswith(".csv") or nome_arquivo.endswith(".tsv"):
-        df_importado = pd.read_csv(arquivo)
+        # CSV / TSV
+        if nome_arquivo.endswith(".csv") or nome_arquivo.endswith(".tsv"):
+            df_importado = pd.read_csv(arquivo)
 
-    # XLS (antigo)
-    elif nome_arquivo.endswith(".xls"):
-        df_importado = pd.read_excel(arquivo, engine="xlrd")
+        # XLS (antigo)
+        elif nome_arquivo.endswith(".xls"):
+            df_importado = pd.read_excel(arquivo, engine="xlrd")
 
-    # XLSX / XLSM / ODS
-    else:
-        df_importado = pd.read_excel(arquivo, engine="openpyxl")
+        # XLSX / XLSM / ODS
+        else:
+            df_importado = pd.read_excel(arquivo, engine="openpyxl")
 
-    # Normaliza colunas
-    df_importado.columns = df_importado.columns.str.strip().str.title()
-    df_importado = df_importado.loc[:, ~df_importado.columns.str.contains("^Unnamed")]
+        # Normaliza colunas
+        df_importado.columns = df_importado.columns.str.strip().str.title()
+        df_importado = df_importado.loc[:, ~df_importado.columns.str.contains("^Unnamed")]
 
-    # Garante colunas esperadas
-    colunas_esperadas = ["Descrição", "Categoria", "Data", "Valor", "Observações"]
-    for col in colunas_esperadas:
-        if col not in df_importado.columns:
-            df_importado[col] = None
+        # Garante colunas esperadas
+        colunas_esperadas = ["Descrição", "Categoria", "Data", "Valor", "Observações"]
+        for col in colunas_esperadas:
+            if col not in df_importado.columns:
+                df_importado[col] = None
 
-    st.session_state.planilhas[nome] = df_importado
-    st.success("Planilha importada com sucesso!")
+        st.session_state.planilhas[nome] = df_importado
+        st.success("Planilha importada com sucesso!")
 
-            df = st.session_state.planilhas[nome]
+    df = st.session_state.planilhas[nome]
 
-            st.session_state.planilhas[nome] = st.data_editor(
-                df,
-                num_rows="dynamic",
-                key=f"editor_{nome}",
-                use_container_width=True,
-                column_config={
-                    "Descrição": st.column_config.TextColumn("Descrição"),
-                    "Categoria": st.column_config.SelectboxColumn("Categoria", options=CATEGORIAS),
-                    "Data": st.column_config.DateColumn("Data"),
-                    "Valor": st.column_config.NumberColumn("Valor", format="R$ %.2f"),
-                    "Observações": st.column_config.TextColumn("Observações")
-                }
-            )
+    st.session_state.planilhas[nome] = st.data_editor(
+        df,
+        num_rows="dynamic",
+        key=f"editor_{nome}",
+        use_container_width=True,
+        column_config={
+            "Descrição": st.column_config.TextColumn("Descrição"),
+            "Categoria": st.column_config.SelectboxColumn("Categoria", options=CATEGORIAS),
+            "Data": st.column_config.DateColumn("Data"),
+            "Valor": st.column_config.NumberColumn("Valor", format="R$ %.2f"),
+            "Observações": st.column_config.TextColumn("Observações")
+        }
+    )
 
-            if st.button(f"Calcular total de {nome}"):
-                df_calc = st.session_state.planilhas[nome].copy()
-                df_calc["Valor"] = pd.to_numeric(df_calc["Valor"], errors="coerce").fillna(0)
-                total = df_calc["Valor"].sum()
-                st.success(f"Total de gastos em {nome}: R$ {total:,.2f}")
-                st.dataframe(df_calc)
+    if st.button(f"Calcular total de {nome}"):
+        df_calc = st.session_state.planilhas[nome].copy()
+        df_calc["Valor"] = pd.to_numeric(df_calc["Valor"], errors="coerce").fillna(0)
+        total = df_calc["Valor"].sum()
+        st.success(f"Total de gastos em {nome}: R$ {total:,.2f}")
+        st.dataframe(df_calc)
 
-            st.subheader("📤 Exportar planilha")
-            df_export = st.session_state.planilhas[nome]
+    st.subheader("📤 Exportar planilha")
+    df_export = st.session_state.planilhas[nome]
 
-            st.download_button(
-                label="📤 Exportar para Excel",
-                data=to_excel(df_export),
-                file_name=f"{nome}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-)
+    st.download_button(
+        label="📤 Exportar para Excel",
+        data=to_excel(df_export),
+        file_name=f"{nome}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )

@@ -290,7 +290,7 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
     st.session_state.planilhas[nome] = df_importado
     st.success("Planilha importada com sucesso!")
 
-           df = st.session_state.planilhas[nome]
+         df = st.session_state.planilhas[nome]
 
             st.session_state.planilhas[nome] = st.data_editor(
                 df,

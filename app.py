@@ -270,9 +270,8 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
           "Selecione um arquivo",
           type=["xlsx", "xls", "xlsm", "ods", "csv", "tsv"],
           key=f"upload_{nome}"
-           )
-
-            if arquivo:
+            ) 
+            
     if arquivo.name.endswith(".csv") or arquivo.name.endswith(".tsv"):
         df_importado = pd.read_csv(arquivo)
     else:

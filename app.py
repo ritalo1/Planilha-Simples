@@ -258,7 +258,8 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
                 data=to_excel(df_export),
                 file_name=f"{nome}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )CATEGORIAS = [
+                )
+                CATEGORIAS = [
     "Alimentação",
     "Transporte",
     "Moradia",

@@ -4,3 +4,4 @@ altair
 openpyxl
 xlsxwriter
 python-dateutil
+duckdb

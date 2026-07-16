@@ -276,7 +276,7 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
             st.subheader("📥 Importar planilha Excel")
             arquivo = st.file_uploader(
                 "Selecione um arquivo",
-                type=["xlsx", "xls", "xlsm", "ods", "csv", "tsv"],
+                type=["xlsx", "xlsm", "ods", "csv", "tsv"],
                 key=f"upload_{nome}"
             )
 
@@ -287,13 +287,18 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
                 if nome_arquivo.endswith(".csv") or nome_arquivo.endswith(".tsv"):
                     df_importado = pd.read_csv(arquivo)
 
-                # XLS (antigo)
-                elif nome_arquivo.endswith(".xls"):
-                    df_importado = pd.read_excel(arquivo, engine="xlrd")
-
                 # XLSX / XLSM / ODS
-                else:
+                elif nome_arquivo.endswith(".xlsx") or nome_arquivo.endswith(".xlsm") or nome_arquivo.endswith(".ods"):
                     df_importado = pd.read_excel(arquivo, engine="openpyxl")
+
+                # XLS (não suportado)
+                elif nome_arquivo.endswith(".xls"):
+                    st.error("❌ Arquivos .xls não são suportados. Converta para .xlsx antes de importar.")
+                    st.stop()
+
+                else:
+                    st.error("❌ Formato de arquivo não reconhecido.")
+                    st.stop()
 
                 # Normaliza colunas
                 df_importado.columns = df_importado.columns.str.strip().str.title()
@@ -339,4 +344,4 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
                 data=to_excel(df_export),
                 file_name=f"{nome}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+    )

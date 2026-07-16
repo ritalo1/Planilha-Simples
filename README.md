@@ -68,4 +68,4 @@ streamlit run app.py
 
 > — Apaixonado por transformar dados em insights, criar dashboards intuitivos e desenvolver soluções práticas em Python e Streamlit.
 
-- Projeto desenvolvido com auxílio de *Microsoft Copilot* (GenAI) para fins de estudo e portfólio.
+- Projeto desenvolvido com auxílio de ferramentas de IA (*Microsoft Copilot*) para fins de estudo e portfólio.

@@ -2,6 +2,8 @@
 
 ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://projeto-planilha.streamlit.app)
+
  Um aplicativo web interativo desenvolvido em Python e Streamlit para organização de gastos mensais, visualização de gráficos, análise de indicadores (KPIs) e edição de planilhas estilo Excel.
 
  Criado com foco em simplicidade, visual moderno e experiência intuitiva para usuários sem conhecimento técnico.
@@ -71,3 +73,5 @@ streamlit run app.py
 > — Apaixonado por transformar dados em insights, criar dashboards intuitivos e desenvolver soluções práticas em Python e Streamlit.
 
 - Projeto desenvolvido com auxílio de ferramentas de IA (*Microsoft Copilot*) para fins de estudo e portfólio.
+
+  [![GitHub repo](https://img.shields.io/badge/github-repo-blue?logo=github)](https://github.com)

@@ -144,12 +144,12 @@ def aplicar_filtros(df, filtros_on, categorias_sel, data_ini, data_fim, vmin, vm
 # ============================
 
 st.markdown(
-    """
+    \"\"\"
     <div style='text-align: center; margin-bottom: 20px;'>
         <h1 style='color: #4CAF50; margin-bottom: 5px;'>💸 Sistema de Gastos SQL Pro</h1>
         <p style='color: #888888; font-size: 14px;'>Engine Analítica Integrada — Powered by DuckDB & Altair</p>
     </div>
-    """,
+    \"\"\",
     unsafe_allow_html=True
 )
 
@@ -463,4 +463,4 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
                             # Ajuste e fechamento corretos dos parênteses do Altair
                             grafico_auto = alt.Chart(resultado_df).mark_bar(
                                 color="#4CAF50", 
-                  
+ 

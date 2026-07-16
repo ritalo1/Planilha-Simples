@@ -261,7 +261,9 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
         # PLANILHAS
         # ============================
 
-        for nome, aba in zip(st.session_state.planilhas.keys(), abas):
+        abas = st.tabs(list(st.session_state.planilhas.keys()))
+
+for nome, aba in zip(st.session_state.planilhas.keys(), abas):
     with aba:
 
         df = st.session_state.planilhas[nome]
@@ -281,8 +283,8 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
         # ============================
 
         if pagina == "Dashboard":
-            # ... (seu código de dashboard aqui, que já tá funcionando)
-            pass  # mantém o que você já tem
+            # (seu código do dashboard aqui)
+            pass
 
         # ============================
         # PLANILHAS
@@ -346,4 +348,4 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
                 data=to_excel(df_export),
                 file_name=f"{nome}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    )
+            )

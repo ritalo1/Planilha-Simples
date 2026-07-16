@@ -73,14 +73,10 @@ with st.sidebar:
         ["Dashboard", "Planilhas"]
     )
 
-    # Geral
-    coluna_kpi = st.selectbox("Escolha a coluna para KPIs", df.columns)
-    coluna_grafico = st.selectbox("Escolha a coluna para gráficos", df.columns)
-       kpi_valores_unicos(df, coluna_kpi)
-       kpi_frequencia(df, coluna_kpi)
-       grafico_barras_generico(df, coluna_grafico)
+    # Geral (somente seleção)
+    coluna_kpi = st.selectbox("Escolha a coluna para KPIs", [])
+    coluna_grafico = st.selectbox("Escolha a coluna para gráficos", [])
 
-    
     # KPIs
     mostrar_kpis = st.checkbox("Mostrar KPIs", value=True)
     if mostrar_kpis:
@@ -212,6 +208,10 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
         df["Data"] = pd.to_datetime(df["Data"], errors="coerce")
         df["Valor"] = pd.to_numeric(df["Valor"], errors="coerce")
 
+        # Atualiza opções da sidebar
+        st.sidebar.selectbox("Escolha a coluna para KPIs", df.columns, key=f"kpi_col_{nome}")
+        st.sidebar.selectbox("Escolha a coluna para gráficos", df.columns, key=f"graf_col_{nome}")
+    
         # ============================
         # DASHBOARD
         # ============================
@@ -223,6 +223,16 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
             df_kpi = df.copy()
             df_kpi["Valor"] = pd.to_numeric(df_kpi["Valor"], errors="coerce").fillna(0)
 
+            # KPIs genéricos
+            if coluna_kpi in df.columns:
+                kpi_valores_unicos(df, coluna_kpi)
+                kpi_frequencia(df, coluna_kpi)
+                kpi_mais_comum(df, coluna_kpi)
+
+            # Gráfico genérico
+            if coluna_grafico in df.columns:
+                grafico_barras_generico(df, coluna_grafico)
+        
             # KPIs
             if mostrar_kpis:
                 if mostrar_total_categoria:

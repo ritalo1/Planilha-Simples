@@ -427,90 +427,90 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
         # PLANILHAS
         # ============================
         elif pagina == "Planilhas":
-    st.markdown(
-        f"<h3 style='color:#4CAF50;'>🧾 Planilha — {nome}</h3>",
-        unsafe_allow_html=True
-    )
+           st.markdown(
+             f"<h3 style='color:#4CAF50;'>🧾 Planilha — {nome}</h3>",
+             unsafe_allow_html=True
+           )
 
-    st.subheader("📥 Importar planilha")
-    arquivo = st.file_uploader(
-        "Selecione um arquivo",
-        type=["xlsx", "xlsm", "ods", "csv", "tsv"],
-        key=f"upload_{nome}"
-    )
+           st.subheader("📥 Importar planilha")
+           arquivo = st.file_uploader(
+             "Selecione um arquivo",
+             type=["xlsx", "xlsm", "ods", "csv", "tsv"],
+             key=f"upload_{nome}"
+           )
 
-    if arquivo:
-        nome_arquivo = arquivo.name.lower()
+           if arquivo:
+               nome_arquivo = arquivo.name.lower()
 
-        if nome_arquivo.endswith((".csv", ".tsv")):
-            df_importado = pd.read_csv(arquivo)
-        else:
-            df_importado = pd.read_excel(arquivo, engine="openpyxl")
+           if nome_arquivo.endswith((".csv", ".tsv")):
+               df_importado = pd.read_csv(arquivo)
+           else:
+               df_importado = pd.read_excel(arquivo, engine="openpyxl")
 
-        st.info("Mapeie as colunas do arquivo para o padrão do sistema:")
+           st.info("Mapeie as colunas do arquivo para o padrão do sistema:")
 
-        colunas_detectadas = list(df_importado.columns)
+           colunas_detectadas = list(df_importado.columns)
 
-        col_desc = st.selectbox("Coluna de Descrição", colunas_detectadas, key=f"map_desc_{nome}")
-        col_cat = st.selectbox("Coluna de Categoria", colunas_detectadas, key=f"map_cat_{nome}")
-        col_val = st.selectbox("Coluna de Valor", colunas_detectadas, key=f"map_val_{nome}")
-        col_data = st.selectbox("Coluna de Data", colunas_detectadas, key=f"map_data_{nome}")
+           col_desc = st.selectbox("Coluna de Descrição", colunas_detectadas, key=f"map_desc_{nome}")
+           col_cat = st.selectbox("Coluna de Categoria", colunas_detectadas, key=f"map_cat_{nome}")
+           col_val = st.selectbox("Coluna de Valor", colunas_detectadas, key=f"map_val_{nome}")
+           col_data = st.selectbox("Coluna de Data", colunas_detectadas, key=f"map_data_{nome}")
 
-        if st.button("Confirmar mapeamento e limpar", key=f"map_btn_{nome}"):
-            df_importado = df_importado.rename(columns={
-                col_desc: "Descrição",
-                col_cat: "Categoria",
-                col_val: "Valor",
-                col_data: "Data"
-            })
+           if st.button("Confirmar mapeamento e limpar", key=f"map_btn_{nome}"):
+               df_importado = df_importado.rename(columns={
+                   col_desc: "Descrição",
+                   col_cat: "Categoria",
+                   col_val: "Valor",
+                   col_data: "Data"
+               })
 
-            df_importado = limpar_planilha(df_importado)
-            st.session_state.planilhas[nome] = df_importado
-            df = df_importado
+               df_importado = limpar_planilha(df_importado)
+               st.session_state.planilhas[nome] = df_importado
+               df = df_importado
 
-            st.success("Planilha importada, mapeada e limpa com sucesso!")
+               st.success("Planilha importada, mapeada e limpa com sucesso!")
 
-    st.subheader("✏️ Editar dados")
-    df = st.session_state.planilhas[nome]
+       st.subheader("✏️ Editar dados")
+       df = st.session_state.planilhas[nome]
 
-    st.session_state.planilhas[nome] = st.data_editor(
-        df,
-        num_rows="dynamic",
-        key=f"editor_{nome}",
-        use_container_width=True,
-        column_config={
-            "Descrição": st.column_config.TextColumn("Descrição"),
-            "Categoria": st.column_config.SelectboxColumn("Categoria", options=CATEGORIAS),
-            "Data": st.column_config.DateColumn("Data"),
-            "Valor": st.column_config.NumberColumn("Valor", format="R$ %.2f"),
-            "Observações": st.column_config.TextColumn("Observações")
-        }
-    )
+       st.session_state.planilhas[nome] = st.data_editor(
+           df,
+           num_rows="dynamic",
+           key=f"editor_{nome}",
+           use_container_width=True,
+           column_config={
+               "Descrição": st.column_config.TextColumn("Descrição"),
+               "Categoria": st.column_config.SelectboxColumn("Categoria", options=CATEGORIAS),
+               "Data": st.column_config.DateColumn("Data"),
+               "Valor": st.column_config.NumberColumn("Valor", format="R$ %.2f"),
+               "Observações": st.column_config.TextColumn("Observações")
+           }
+       )
 
-    col_b1, col_b2, col_b3 = st.columns(3)
+       col_b1, col_b2, col_b3 = st.columns(3)
 
-    with col_b1:
-        if st.button(f"🧹 Limpar planilha — {nome}"):
-            df_limpo = limpar_planilha(st.session_state.planilhas[nome])
-            st.session_state.planilhas[nome] = df_limpo
-            st.success("Planilha limpa.")
-            st.dataframe(df_limpo, use_container_width=True)
+       with col_b1:
+           if st.button(f"🧹 Limpar planilha — {nome}"):
+               df_limpo = limpar_planilha(st.session_state.planilhas[nome])
+               st.session_state.planilhas[nome] = df_limpo
+               st.success("Planilha limpa.")
+               st.dataframe(df_limpo, use_container_width=True)
 
-    with col_b2:
-        if st.button(f"🧮 Calcular total — {nome}"):
-            df_calc = limpar_planilha(st.session_state.planilhas[nome].copy())
-            total = df_calc["Valor"].sum()
-            st.success(f"Total de gastos em {nome}: R$ {total:,.2f}")
-            st.dataframe(df_calc, use_container_width=True)
+       with col_b2:
+           if st.button(f"🧮 Calcular total — {nome}"):
+               df_calc = limpar_planilha(st.session_state.planilhas[nome].copy())
+               total = df_calc["Valor"].sum()
+               st.success(f"Total de gastos em {nome}: R$ {total:,.2f}")
+               st.dataframe(df_calc, use_container_width=True)
 
-    with col_b3:
-        df_export = st.session_state.planilhas[nome]
-        st.download_button(
-            label="📤 Exportar para Excel",
-            data=to_excel(df_export),
-            file_name=f"{nome}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+       with col_b3:
+          df_export = st.session_state.planilhas[nome]
+          st.download_button(
+               label="📤 Exportar para Excel",
+               data=to_excel(df_export),
+               file_name=f"{nome}.xlsx",
+               mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+           )
 
         # ============================
         # CONSOLE SQL

@@ -263,62 +263,63 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
 
         elif pagina == "Planilhas":
 
-            st.markdown(f"<h2 style='color:#4CAF50;'>🧾 Planilha — {nome}</h2>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='color:#4CAF50;'>🧾 Planilha — {nome}</h2>", unsafe_allow_html=True)
 
-            st.subheader("📥 Importar planilha Excel")
-            arquivo = st.file_uploader(
-          "Selecione um arquivo",
-          type=["xlsx", "xls", "xlsm", "ods", "csv", "tsv"],
-          key=f"upload_{nome}"
-            ) 
-            
-    if arquivo.name.endswith(".csv") or arquivo.name.endswith(".tsv"):
-        df_importado = pd.read_csv(arquivo)
-    else:
-        df_importado = pd.read_excel(arquivo)
+    st.subheader("📥 Importar planilha Excel")
+    arquivo = st.file_uploader(
+        "Selecione um arquivo",
+        type=["xlsx", "xls", "xlsm", "ods", "csv", "tsv"],
+        key=f"upload_{nome}"
+    )
 
-    # Normaliza nomes das colunas
-    df_importado.columns = df_importado.columns.str.strip().str.title()
+    if arquivo:
+        # Detecta tipo de arquivo
+        if arquivo.name.endswith(".csv") or arquivo.name.endswith(".tsv"):
+            df_importado = pd.read_csv(arquivo)
+        else:
+            df_importado = pd.read_excel(arquivo)
 
-    # Garante colunas esperadas
-    colunas_esperadas = ["Descrição", "Categoria", "Data", "Valor", "Observações"]
-    for col in colunas_esperadas:
-        if col not in df_importado.columns:
-            df_importado[col] = None
+        # Normaliza nomes das colunas
+        df_importado.columns = df_importado.columns.str.strip().str.title()
 
-       
-    st.session_state.planilhas[nome] = df_importado
-    st.success("Planilha importada com sucesso!")
+        # Garante colunas esperadas
+        colunas_esperadas = ["Descrição", "Categoria", "Data", "Valor", "Observações"]
+        for col in colunas_esperadas:
+            if col not in df_importado.columns:
+                df_importado[col] = None
 
-      df = st.session_state.planilhas[nome]
+        st.session_state.planilhas[nome] = df_importado
+        st.success("Planilha importada com sucesso!")
 
-            st.session_state.planilhas[nome] = st.data_editor(
-                df,
-                num_rows="dynamic",
-                key=f"editor_{nome}",
-                use_container_width=True,
-                column_config={
-                    "Descrição": st.column_config.TextColumn("Descrição"),
-                    "Categoria": st.column_config.SelectboxColumn("Categoria", options=CATEGORIAS),
-                    "Data": st.column_config.DateColumn("Data"),
-                    "Valor": st.column_config.NumberColumn("Valor", format="R$ %.2f"),
-                    "Observações": st.column_config.TextColumn("Observações")
-                }
-            )
+    df = st.session_state.planilhas[nome]
 
-            if st.button(f"Calcular total de {nome}"):
-                df_calc = st.session_state.planilhas[nome].copy()
-                df_calc["Valor"] = pd.to_numeric(df_calc["Valor"], errors="coerce").fillna(0)
-                total = df_calc["Valor"].sum()
-                st.success(f"Total de gastos em {nome}: R$ {total:,.2f}")
-                st.dataframe(df_calc)
+    st.session_state.planilhas[nome] = st.data_editor(
+        df,
+        num_rows="dynamic",
+        key=f"editor_{nome}",
+        use_container_width=True,
+        column_config={
+            "Descrição": st.column_config.TextColumn("Descrição"),
+            "Categoria": st.column_config.SelectboxColumn("Categoria", options=CATEGORIAS),
+            "Data": st.column_config.DateColumn("Data"),
+            "Valor": st.column_config.NumberColumn("Valor", format="R$ %.2f"),
+            "Observações": st.column_config.TextColumn("Observações")
+        }
+    )
 
-            st.subheader("📤 Exportar planilha")
-            df_export = st.session_state.planilhas[nome]
+    if st.button(f"Calcular total de {nome}"):
+        df_calc = st.session_state.planilhas[nome].copy()
+        df_calc["Valor"] = pd.to_numeric(df_calc["Valor"], errors="coerce").fillna(0)
+        total = df_calc["Valor"].sum()
+        st.success(f"Total de gastos em {nome}: R$ {total:,.2f}")
+        st.dataframe(df_calc)
 
-            st.download_button(
-                label="📤 Exportar para Excel",
-                data=to_excel(df_export),
-                file_name=f"{nome}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    st.subheader("📤 Exportar planilha")
+    df_export = st.session_state.planilhas[nome]
+
+    st.download_button(
+        label="📤 Exportar para Excel",
+        data=to_excel(df_export),
+        file_name=f"{nome}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )

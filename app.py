@@ -281,21 +281,32 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
             )
 
             if arquivo:
-                if arquivo.name.endswith(".csv") or arquivo.name.endswith(".tsv"):
-                    df_importado = pd.read_csv(arquivo)
-                else:
-                    df_importado = pd.read_excel(arquivo)
+    nome_arquivo = arquivo.name.lower()
 
-                df_importado.columns = df_importado.columns.str.strip().str.title()
-                df_importado = df_importado.loc[:, ~df_importado.columns.str.contains("^Unnamed")]
+    # CSV / TSV
+    if nome_arquivo.endswith(".csv") or nome_arquivo.endswith(".tsv"):
+        df_importado = pd.read_csv(arquivo)
 
-                colunas_esperadas = ["Descrição", "Categoria", "Data", "Valor", "Observações"]
-                for col in colunas_esperadas:
-                    if col not in df_importado.columns:
-                        df_importado[col] = None
+    # XLS (antigo)
+    elif nome_arquivo.endswith(".xls"):
+        df_importado = pd.read_excel(arquivo, engine="xlrd")
 
-                st.session_state.planilhas[nome] = df_importado
-                st.success("Planilha importada com sucesso!")
+    # XLSX / XLSM / ODS
+    else:
+        df_importado = pd.read_excel(arquivo, engine="openpyxl")
+
+    # Normaliza colunas
+    df_importado.columns = df_importado.columns.str.strip().str.title()
+    df_importado = df_importado.loc[:, ~df_importado.columns.str.contains("^Unnamed")]
+
+    # Garante colunas esperadas
+    colunas_esperadas = ["Descrição", "Categoria", "Data", "Valor", "Observações"]
+    for col in colunas_esperadas:
+        if col not in df_importado.columns:
+            df_importado[col] = None
+
+    st.session_state.planilhas[nome] = df_importado
+    st.success("Planilha importada com sucesso!")
 
             df = st.session_state.planilhas[nome]
 

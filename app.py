@@ -460,7 +460,7 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
                             
                             st.info(f"Visualização gerada para: **{x_axis}** x **{y_axis}**")
                             
+                            # Ajuste e fechamento corretos dos parênteses do Altair
                             grafico_auto = alt.Chart(resultado_df).mark_bar(
-                                color="#4CAF50", cornerRadiusTopLeft=5, cornerRadiusTopRight=5
-                            ).encode(
-                   
+                                color="#4CAF50", 
+                  

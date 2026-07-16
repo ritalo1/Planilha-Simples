@@ -73,6 +73,14 @@ with st.sidebar:
         ["Dashboard", "Planilhas"]
     )
 
+    # Geral
+    coluna_kpi = st.selectbox("Escolha a coluna para KPIs", df.columns)
+    coluna_grafico = st.selectbox("Escolha a coluna para gráficos", df.columns)
+       kpi_valores_unicos(df, coluna_kpi)
+       kpi_frequencia(df, coluna_kpi)
+       grafico_barras_generico(df, coluna_grafico)
+
+    
     # KPIs
     mostrar_kpis = st.checkbox("Mostrar KPIs", value=True)
     if mostrar_kpis:
@@ -99,6 +107,21 @@ with st.sidebar:
 # FUNÇÕES DE KPIs E GRÁFICOS
 # ============================
 
+def kpi_valores_unicos(df, coluna):
+    total = df[coluna].nunique()
+    st.metric(f"Valores únicos em {coluna}", total)
+
+def kpi_frequencia(df, coluna):
+    freq = df[coluna].value_counts().reset_index()
+    freq.columns = [coluna, "Frequência"]
+    st.subheader(f"📊 Frequência de {coluna}")
+    st.dataframe(freq)
+
+def kpi_mais_comum(df, coluna):
+    comum = df[coluna].mode()
+    if not comum.empty:
+        st.info(f"🔎 Valor mais comum em {coluna}: {comum.iloc[0]}")
+
 def kpi_total_categoria(df_kpi):
     df_cat = df_kpi.groupby("Categoria", as_index=False)["Valor"].sum()
     df_cat["Percentual"] = (df_cat["Valor"] / df_cat["Valor"].sum()) * 100
@@ -117,6 +140,27 @@ def kpi_dia_max(df_kpi):
     if not df_data.empty:
         dia_max = df_data.loc[df_data["Valor"].idxmax()]
         st.info(f"📅 Dia com maior gasto: {dia_max['Data'].date()} — R$ {dia_max['Valor']:,.2f}")
+
+def grafico_linha_generico(df, coluna_data, coluna_valor):
+    df_temp = df.dropna(subset=[coluna_data, coluna_valor])
+    grafico = alt.Chart(df_temp).mark_line().encode(
+        x=coluna_data,
+        y=coluna_valor
+    )
+    st.subheader(f"📈 {coluna_valor} ao longo de {coluna_data}")
+    st.altair_chart(grafico, use_container_width=True)
+
+def grafico_barras_generico(df, coluna):
+    freq = df[coluna].value_counts().reset_index()
+    freq.columns = [coluna, "Frequência"]
+
+    grafico = alt.Chart(freq).mark_bar().encode(
+        x=coluna,
+        y="Frequência",
+        color=coluna
+    )
+    st.subheader(f"📊 Frequência de {coluna}")
+    st.altair_chart(grafico, use_container_width=True)
 
 def grafico_pizza(df_cat):
     grafico = alt.Chart(df_cat).mark_arc().encode(
@@ -212,11 +256,16 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
             st.markdown(f"<h2 style='color:#4CAF50;'>🧾 Planilha — {nome}</h2>", unsafe_allow_html=True)
 
             st.subheader("📥 Importar planilha Excel")
-            arquivo = st.file_uploader("Selecione um arquivo .xlsx", type=["xlsx"], key=f"upload_{nome}")
+            arquivo = st.file_uploader(
+          "Selecione um arquivo",
+          type=["xlsx", "xls", "xlsm", "ods", "csv", "tsv"],
+          key=f"upload_{nome}"
+           )
 
-            if arquivo:
-                df_importado = pd.read_excel(arquivo)
-                df_importado.columns = df_importado.columns.str.strip().str.title()
+            if arquivo.name.endswith(".csv") or arquivo.name.endswith(".tsv"):
+              df_importado = pd.read_csv(arquivo)
+            else:
+              df_importado = pd.read_excel(arquivo)
 
                 colunas_esperadas = ["Descrição", "Categoria", "Data", "Valor", "Observações"]
                 for col in colunas_esperadas:

@@ -240,3 +240,92 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
             # KPIs específicos
             if mostrar_kpis:
                 if kpi_total_categoria:
+                    df_cat = kpi_total_categoria(df_kpi)
+
+                if kpi_ticket_medio:
+                    kpi_ticket_medio(df_kpi)
+
+                if kpi_dia_max:
+                    kpi_dia_max(df_kpi)
+
+            # Gráficos genéricos
+            if mostrar_graficos and grafico_generico and coluna_grafico in df.columns:
+                grafico_barras_generico(df, coluna_grafico)
+
+            # Gráficos específicos
+            if mostrar_graficos:
+                if grafico_pizza:
+                    df_cat = df_kpi.groupby("Categoria", as_index=False)["Valor"].sum()
+                    df_cat["Percentual"] = (df_cat["Valor"] / df_cat["Valor"].sum()) * 100
+                    grafico_pizza(df_cat)
+
+                if grafico_barras:
+                    grafico_barras(df)
+
+                if grafico_linha:
+                    grafico_linha(df)
+
+        # ============================
+        # PLANILHAS
+        # ============================
+
+        elif pagina == "Planilhas":
+
+            st.markdown(f"<h2 style='color:#4CAF50;'>🧾 Planilha — {nome}</h2>", unsafe_allow_html=True)
+
+            st.subheader("📥 Importar planilha Excel")
+            arquivo = st.file_uploader(
+                "Selecione um arquivo",
+                type=["xlsx", "xls", "xlsm", "ods", "csv", "tsv"],
+                key=f"upload_{nome}"
+            )
+
+            if arquivo:
+                if arquivo.name.endswith(".csv") or arquivo.name.endswith(".tsv"):
+                    df_importado = pd.read_csv(arquivo)
+                else:
+                    df_importado = pd.read_excel(arquivo)
+
+                df_importado.columns = df_importado.columns.str.strip().str.title()
+                df_importado = df_importado.loc[:, ~df_importado.columns.str.contains("^Unnamed")]
+
+                colunas_esperadas = ["Descrição", "Categoria", "Data", "Valor", "Observações"]
+                for col in colunas_esperadas:
+                    if col not in df_importado.columns:
+                        df_importado[col] = None
+
+                st.session_state.planilhas[nome] = df_importado
+                st.success("Planilha importada com sucesso!")
+
+            df = st.session_state.planilhas[nome]
+
+            st.session_state.planilhas[nome] = st.data_editor(
+                df,
+                num_rows="dynamic",
+                key=f"editor_{nome}",
+                use_container_width=True,
+                column_config={
+                    "Descrição": st.column_config.TextColumn("Descrição"),
+                    "Categoria": st.column_config.SelectboxColumn("Categoria", options=CATEGORIAS),
+                    "Data": st.column_config.DateColumn("Data"),
+                    "Valor": st.column_config.NumberColumn("Valor", format="R$ %.2f"),
+                    "Observações": st.column_config.TextColumn("Observações")
+                }
+            )
+
+            if st.button(f"Calcular total de {nome}"):
+                df_calc = st.session_state.planilhas[nome].copy()
+                df_calc["Valor"] = pd.to_numeric(df_calc["Valor"], errors="coerce").fillna(0)
+                total = df_calc["Valor"].sum()
+                st.success(f"Total de gastos em {nome}: R$ {total:,.2f}")
+                st.dataframe(df_calc)
+
+            st.subheader("📤 Exportar planilha")
+            df_export = st.session_state.planilhas[nome]
+
+            st.download_button(
+                label="📤 Exportar para Excel",
+                data=to_excel(df_export),
+                file_name=f"{nome}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)

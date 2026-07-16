@@ -73,23 +73,33 @@ with st.sidebar:
         ["Dashboard", "Planilhas"]
     )
 
-    # Geral (somente seleção)
-    coluna_kpi = st.selectbox("Escolha a coluna para KPIs", [])
-    coluna_grafico = st.selectbox("Escolha a coluna para gráficos", [])
+    # ============================
+    # KPIs (pai)
+    # ============================
 
-    # KPIs
-    mostrar_kpis = st.checkbox("Mostrar KPIs", value=True)
+    mostrar_kpis = st.checkbox("📊 Mostrar KPIs", value=True)
+
     if mostrar_kpis:
-        mostrar_total_categoria = st.checkbox("Total por categoria", value=True)
-        mostrar_ticket_medio = st.checkbox("Ticket médio por categoria", value=True)
-        mostrar_dia_max = st.checkbox("Dia com maior gasto", value=True)
+        st.markdown("##### Tipos de KPIs")
 
-    # Gráficos
-    mostrar_graficos = st.checkbox("Mostrar gráficos", value=True)
+        kpi_genericos = st.checkbox("KPIs genéricos (alfanuméricos)", value=True)
+        kpi_total_categoria = st.checkbox("Total por categoria", value=True)
+        kpi_ticket_medio = st.checkbox("Ticket médio por categoria", value=True)
+        kpi_dia_max = st.checkbox("Dia com maior gasto", value=True)
+
+    # ============================
+    # Gráficos (pai)
+    # ============================
+
+    mostrar_graficos = st.checkbox("📈 Mostrar gráficos", value=True)
+
     if mostrar_graficos:
-        mostrar_pizza = st.checkbox("Gráfico de pizza", value=True)
-        mostrar_barras = st.checkbox("Gráfico de barras", value=True)
-        mostrar_linha = st.checkbox("Linha ao longo do mês", value=True)
+        st.markdown("##### Tipos de gráficos")
+
+        grafico_generico = st.checkbox("Gráfico genérico (frequência)", value=True)
+        grafico_pizza = st.checkbox("Gráfico de pizza", value=True)
+        grafico_barras = st.checkbox("Gráfico de barras", value=True)
+        grafico_linha = st.checkbox("Linha ao longo do mês", value=True)
 
     st.markdown("---")
     st.markdown("### Criar nova planilha")
@@ -136,15 +146,6 @@ def kpi_dia_max(df_kpi):
     if not df_data.empty:
         dia_max = df_data.loc[df_data["Valor"].idxmax()]
         st.info(f"📅 Dia com maior gasto: {dia_max['Data'].date()} — R$ {dia_max['Valor']:,.2f}")
-
-def grafico_linha_generico(df, coluna_data, coluna_valor):
-    df_temp = df.dropna(subset=[coluna_data, coluna_valor])
-    grafico = alt.Chart(df_temp).mark_line().encode(
-        x=coluna_data,
-        y=coluna_valor
-    )
-    st.subheader(f"📈 {coluna_valor} ao longo de {coluna_data}")
-    st.altair_chart(grafico, use_container_width=True)
 
 def grafico_barras_generico(df, coluna):
     freq = df[coluna].value_counts().reset_index()
@@ -211,7 +212,7 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
         # Atualiza opções da sidebar
         st.sidebar.selectbox("Escolha a coluna para KPIs", df.columns, key=f"kpi_col_{nome}")
         st.sidebar.selectbox("Escolha a coluna para gráficos", df.columns, key=f"graf_col_{nome}")
-    
+
         # ============================
         # DASHBOARD
         # ============================
@@ -223,68 +224,42 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
             df_kpi = df.copy()
             df_kpi["Valor"] = pd.to_numeric(df_kpi["Valor"], errors="coerce").fillna(0)
 
+            coluna_kpi = st.session_state[f"kpi_col_{nome}"]
+            coluna_grafico = st.session_state[f"graf_col_{nome}"]
+
             # KPIs genéricos
-            if coluna_kpi in df.columns:
+            if mostrar_kpis and kpi_genericos and coluna_kpi in df.columns:
                 kpi_valores_unicos(df, coluna_kpi)
                 kpi_frequencia(df, coluna_kpi)
                 kpi_mais_comum(df, coluna_kpi)
 
-            # Gráfico genérico
-            if coluna_grafico in df.columns:
-                grafico_barras_generico(df, coluna_grafico)
-        
-            # KPIs
+            # KPIs específicos
             if mostrar_kpis:
-                if mostrar_total_categoria:
+                if kpi_total_categoria:
                     df_cat = kpi_total_categoria(df_kpi)
 
-                if mostrar_ticket_medio:
+                if kpi_ticket_medio:
                     kpi_ticket_medio(df_kpi)
 
-                if mostrar_dia_max:
+                if kpi_dia_max:
                     kpi_dia_max(df_kpi)
 
-            # Gráficos
+            # Gráficos genéricos
+            if mostrar_graficos and grafico_generico and coluna_grafico in df.columns:
+                grafico_barras_generico(df, coluna_grafico)
+
+            # Gráficos específicos
             if mostrar_graficos:
-                if mostrar_pizza:
+                if grafico_pizza:
                     df_cat = df_kpi.groupby("Categoria", as_index=False)["Valor"].sum()
                     df_cat["Percentual"] = (df_cat["Valor"] / df_cat["Valor"].sum()) * 100
                     grafico_pizza(df_cat)
 
-                if mostrar_barras:
+                if grafico_barras:
                     grafico_barras(df)
 
-                if mostrar_linha:
+                if grafico_linha:
                     grafico_linha(df)
-
-        # ============================
-        # PLANILHAS
-        # ============================
-
-        abas = st.tabs(list(st.session_state.planilhas.keys()))
-
-for nome, aba in zip(st.session_state.planilhas.keys(), abas):
-    with aba:
-
-        df = st.session_state.planilhas[nome]
-
-        df["Descrição"] = df["Descrição"].astype(str)
-        df["Categoria"] = df["Categoria"].astype(str)
-        df["Observações"] = df["Observações"].astype(str)
-        df["Data"] = pd.to_datetime(df["Data"], errors="coerce")
-        df["Valor"] = pd.to_numeric(df["Valor"], errors="coerce")
-
-        # Atualiza opções da sidebar
-        st.sidebar.selectbox("Escolha a coluna para KPIs", df.columns, key=f"kpi_col_{nome}")
-        st.sidebar.selectbox("Escolha a coluna para gráficos", df.columns, key=f"graf_col_{nome}")
-
-        # ============================
-        # DASHBOARD
-        # ============================
-
-        if pagina == "Dashboard":
-            # (seu código do dashboard aqui)
-            pass
 
         # ============================
         # PLANILHAS
@@ -348,4 +323,4 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
                 data=to_excel(df_export),
                 file_name=f"{nome}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+    )

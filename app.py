@@ -76,7 +76,14 @@ with st.sidebar:
     mostrar_kpis = st.checkbox("Mostrar KPIs básicos", value=True)
     mostrar_kpis_avancados = st.checkbox("Mostrar KPIs avançados", value=True)
     mostrar_graficos = st.checkbox("Mostrar gráficos", value=True)
+st.markdown("### Visualizações detalhadas")
 
+mostrar_total_categoria = st.checkbox("Total por categoria", value=True)
+mostrar_ticket_medio = st.checkbox("Ticket médio por categoria", value=True)
+mostrar_dia_max = st.checkbox("Dia com maior gasto", value=True)
+mostrar_pizza = st.checkbox("Gráfico de pizza", value=True)
+mostrar_barras = st.checkbox("Gráfico de barras", value=True)
+mostrar_linha = st.checkbox("Linha ao longo do mês", value=True)
     st.markdown("---")
     st.markdown("### Criar nova planilha")
     novo_nome = st.text_input("Nome da nova planilha (ex: Fevereiro)")
@@ -84,6 +91,28 @@ with st.sidebar:
         if novo_nome.strip() != "":
             st.session_state.planilhas[novo_nome] = pd.DataFrame(MODELO)
             st.success(f"Planilha '{novo_nome}' criada com sucesso!")
+
+# ============================
+# FUNÇÕES DE KPIs E GRÁFICOS
+# ============================
+
+def kpi_total_categoria(df_kpi):
+    ...
+
+def kpi_ticket_medio(df_kpi):
+    ...
+
+def kpi_dia_max(df_kpi):
+    ...
+
+def grafico_pizza(df_cat):
+    ...
+
+def grafico_barras(df):
+    ...
+
+def grafico_linha(df):
+    ...
 
 # ============================
 # CONTEÚDO PRINCIPAL
@@ -113,7 +142,25 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
 
             df_kpi = df.copy()
             df_kpi["Valor"] = pd.to_numeric(df_kpi["Valor"], errors="coerce").fillna(0)
+# KPIs
+if mostrar_total_categoria:
+    df_cat = kpi_total_categoria(df_kpi)
 
+if mostrar_ticket_medio:
+    kpi_ticket_medio(df_kpi)
+
+if mostrar_dia_max:
+    kpi_dia_max(df_kpi)
+
+# Gráficos
+if mostrar_pizza:
+    grafico_pizza(df_cat)
+
+if mostrar_barras:
+    grafico_barras(df)
+
+if mostrar_linha:
+    grafico_linha(df)
             # KPIs básicos
             if mostrar_kpis:
                 st.subheader("📌 Indicadores do mês")

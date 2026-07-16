@@ -76,14 +76,16 @@ with st.sidebar:
     mostrar_kpis = st.checkbox("Mostrar KPIs básicos", value=True)
     mostrar_kpis_avancados = st.checkbox("Mostrar KPIs avançados", value=True)
     mostrar_graficos = st.checkbox("Mostrar gráficos", value=True)
-st.markdown("### Visualizações detalhadas")
 
-mostrar_total_categoria = st.checkbox("Total por categoria", value=True)
-mostrar_ticket_medio = st.checkbox("Ticket médio por categoria", value=True)
-mostrar_dia_max = st.checkbox("Dia com maior gasto", value=True)
-mostrar_pizza = st.checkbox("Gráfico de pizza", value=True)
-mostrar_barras = st.checkbox("Gráfico de barras", value=True)
-mostrar_linha = st.checkbox("Linha ao longo do mês", value=True)
+    st.markdown("### Visualizações detalhadas")
+
+    mostrar_total_categoria = st.checkbox("Total por categoria", value=True)
+    mostrar_ticket_medio = st.checkbox("Ticket médio por categoria", value=True)
+    mostrar_dia_max = st.checkbox("Dia com maior gasto", value=True)
+    mostrar_pizza = st.checkbox("Gráfico de pizza", value=True)
+    mostrar_barras = st.checkbox("Gráfico de barras", value=True)
+    mostrar_linha = st.checkbox("Linha ao longo do mês", value=True)
+
     st.markdown("---")
     st.markdown("### Criar nova planilha")
     novo_nome = st.text_input("Nome da nova planilha (ex: Fevereiro)")
@@ -97,22 +99,56 @@ mostrar_linha = st.checkbox("Linha ao longo do mês", value=True)
 # ============================
 
 def kpi_total_categoria(df_kpi):
-    ...
+    df_cat = df_kpi.groupby("Categoria", as_index=False)["Valor"].sum()
+    df_cat["Percentual"] = (df_cat["Valor"] / df_cat["Valor"].sum()) * 100
+    st.subheader("📊 Total por categoria")
+    st.dataframe(df_cat)
+    return df_cat
 
 def kpi_ticket_medio(df_kpi):
-    ...
+    df_ticket = df_kpi.groupby("Categoria", as_index=False)["Valor"].mean()
+    df_ticket.rename(columns={"Valor": "Ticket Médio"}, inplace=True)
+    st.subheader("💳 Ticket médio por categoria")
+    st.dataframe(df_ticket)
 
 def kpi_dia_max(df_kpi):
-    ...
+    df_data = df_kpi.dropna(subset=["Data"])
+    if not df_data.empty:
+        dia_max = df_data.loc[df_data["Valor"].idxmax()]
+        st.info(f"📅 Dia com maior gasto: {dia_max['Data'].date()} — R$ {dia_max['Valor']:,.2f}")
 
 def grafico_pizza(df_cat):
-    ...
+    grafico = alt.Chart(df_cat).mark_arc().encode(
+        theta="Valor",
+        color="Categoria",
+        tooltip=["Categoria", "Valor", "Percentual"]
+    )
+    st.subheader("🍕 Distribuição por categoria")
+    st.altair_chart(grafico, use_container_width=True)
 
 def grafico_barras(df):
-    ...
+    grafico = alt.Chart(df).mark_bar(
+        cornerRadiusTopLeft=5,
+        cornerRadiusTopRight=5
+    ).encode(
+        x=alt.X("Categoria", sort="-y"),
+        y="Valor",
+        color="Categoria"
+    )
+    st.subheader("📊 Gastos por categoria")
+    st.altair_chart(grafico, use_container_width=True)
 
 def grafico_linha(df):
-    ...
+    df_data = df.dropna(subset=["Data"])
+    grafico = alt.Chart(df_data).mark_line(
+        color="#4CAF50",
+        strokeWidth=3
+    ).encode(
+        x="Data",
+        y="Valor"
+    )
+    st.subheader("📈 Gastos ao longo do mês")
+    st.altair_chart(grafico, use_container_width=True)
 
 # ============================
 # CONTEÚDO PRINCIPAL
@@ -125,7 +161,6 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
 
         df = st.session_state.planilhas[nome]
 
-        # Conversão de tipos
         df["Descrição"] = df["Descrição"].astype(str)
         df["Categoria"] = df["Categoria"].astype(str)
         df["Observações"] = df["Observações"].astype(str)
@@ -142,25 +177,27 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
 
             df_kpi = df.copy()
             df_kpi["Valor"] = pd.to_numeric(df_kpi["Valor"], errors="coerce").fillna(0)
-# KPIs
-if mostrar_total_categoria:
-    df_cat = kpi_total_categoria(df_kpi)
 
-if mostrar_ticket_medio:
-    kpi_ticket_medio(df_kpi)
+            # CHAMADAS MODULARES
+            if mostrar_total_categoria:
+                df_cat = kpi_total_categoria(df_kpi)
 
-if mostrar_dia_max:
-    kpi_dia_max(df_kpi)
+            if mostrar_ticket_medio:
+                kpi_ticket_medio(df_kpi)
 
-# Gráficos
-if mostrar_pizza:
-    grafico_pizza(df_cat)
+            if mostrar_dia_max:
+                kpi_dia_max(df_kpi)
 
-if mostrar_barras:
-    grafico_barras(df)
+            if mostrar_pizza:
+                df_cat = df_kpi.groupby("Categoria", as_index=False)["Valor"].sum()
+                df_cat["Percentual"] = (df_cat["Valor"] / df_cat["Valor"].sum()) * 100
+                grafico_pizza(df_cat)
 
-if mostrar_linha:
-    grafico_linha(df)
+            if mostrar_barras:
+                grafico_barras(df)
+
+            if mostrar_linha:
+                grafico_linha(df)
             # KPIs básicos
             if mostrar_kpis:
                 st.subheader("📌 Indicadores do mês")

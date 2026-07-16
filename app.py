@@ -263,21 +263,21 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
 
         elif pagina == "Planilhas":
 
-          st.markdown(f"<h2 style='color:#4CAF50;'>🧾 Planilha — {nome}</h2>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='color:#4CAF50;'>🧾 Planilha — {nome}</h2>", unsafe_allow_html=True)
 
-          st.subheader("📥 Importar planilha Excel")
-          arquivo = st.file_uploader(
-            "Selecione um arquivo",
-            type=["xlsx", "xls", "xlsm", "ods", "csv", "tsv"],
-            key=f"upload_{nome}"
-          )
+    st.subheader("📥 Importar planilha Excel")
+    arquivo = st.file_uploader(
+        "Selecione um arquivo",
+        type=["xlsx", "xls", "xlsm", "ods", "csv", "tsv"],
+        key=f"upload_{nome}"
+    )
 
-        if arquivo:
+    if arquivo:
         # Detecta tipo de arquivo
-           if arquivo.name.endswith(".csv") or arquivo.name.endswith(".tsv"):
-              df_importado = pd.read_csv(arquivo)
-           else:
-              df_importado = pd.read_excel(arquivo)
+        if arquivo.name.endswith(".csv") or arquivo.name.endswith(".tsv"):
+            df_importado = pd.read_csv(arquivo)
+        else:
+            df_importado = pd.read_excel(arquivo)
 
         # Normaliza nomes das colunas
         df_importado.columns = df_importado.columns.str.strip().str.title()
@@ -291,6 +291,7 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
         st.session_state.planilhas[nome] = df_importado
         st.success("Planilha importada com sucesso!")
 
+    # A partir daqui, sempre usa o que está em session_state
     df = st.session_state.planilhas[nome]
 
     st.session_state.planilhas[nome] = st.data_editor(
@@ -322,4 +323,4 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
         data=to_excel(df_export),
         file_name=f"{nome}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-)
+    )

@@ -1,0 +1,180 @@
+import streamlit as st
+import pandas as pd
+import altair as alt
+
+# ============================
+# CABEÇALHO MODERNO
+# ============================
+
+st.markdown(
+    """
+    <h1 style='text-align: center; color: #4CAF50;'>
+        💸 Sistema de Gastos Mensais
+    </h1>
+    <p style='text-align: center; color: #CCCCCC;'>
+        Organize seus gastos, visualize gráficos e acompanhe indicadores.
+    </p>
+    """,
+    unsafe_allow_html=True
+)
+
+# ============================
+# CONFIGURAÇÕES
+# ============================
+
+CATEGORIAS = [
+    "Alimentação",
+    "Transporte",
+    "Moradia",
+    "Saúde",
+    "Lazer",
+    "Educação",
+    "Outros"
+]
+
+MODELO = {
+    "Descrição": [],
+    "Categoria": [],
+    "Data": [],
+    "Valor": [],
+    "Observações": []
+}
+
+# ============================
+# INICIALIZAÇÃO
+# ============================
+
+if "planilhas" not in st.session_state:
+    st.session_state.planilhas = {
+        "Janeiro": pd.DataFrame(MODELO)
+    }
+
+# ============================
+# MENU LATERAL
+# ============================
+
+with st.sidebar:
+    st.markdown("## ⚙️ Menu")
+
+    pagina = st.radio(
+        "Escolha a página",
+        ["Dashboard", "Planilhas"]
+    )
+
+    mostrar_kpis = st.checkbox("Mostrar KPIs", value=True)
+    mostrar_graficos = st.checkbox("Mostrar gráficos", value=True)
+
+    st.markdown("---")
+    st.markdown("### Criar nova planilha")
+    novo_nome = st.text_input("Nome da nova planilha (ex: Fevereiro)")
+    if st.button("Adicionar planilha"):
+        if novo_nome.strip() != "":
+            st.session_state.planilhas[novo_nome] = pd.DataFrame(MODELO)
+            st.success(f"Planilha '{novo_nome}' criada com sucesso!")
+
+# ============================
+# CONTEÚDO PRINCIPAL
+# ============================
+
+abas = st.tabs(list(st.session_state.planilhas.keys()))
+
+for nome, aba in zip(st.session_state.planilhas.keys(), abas):
+    with aba:
+
+        df = st.session_state.planilhas[nome]
+
+        # Conversão de tipos
+        df["Descrição"] = df["Descrição"].astype(str)
+        df["Categoria"] = df["Categoria"].astype(str)
+        df["Observações"] = df["Observações"].astype(str)
+        df["Data"] = pd.to_datetime(df["Data"], errors="coerce")
+        df["Valor"] = pd.to_numeric(df["Valor"], errors="coerce")
+
+        # ============================
+        # DASHBOARD
+        # ============================
+
+        if pagina == "Dashboard":
+
+            st.markdown(f"<h2 style='color:#4CAF50;'>📊 Dashboard — {nome}</h2>", unsafe_allow_html=True)
+
+            # KPIs
+            if mostrar_kpis:
+                st.subheader("📌 Indicadores do mês")
+
+                df_kpi = df.copy()
+                df_kpi["Valor"] = pd.to_numeric(df_kpi["Valor"], errors="coerce").fillna(0)
+
+                total = df_kpi["Valor"].sum()
+                media = df_kpi["Valor"].mean()
+                maior = df_kpi["Valor"].max()
+                qtd = len(df_kpi)
+
+                col1, col2, col3, col4 = st.columns(4)
+
+                col1.metric("Total gasto", f"R$ {total:,.2f}")
+                col2.metric("Média por gasto", f"R$ {media:,.2f}")
+                col3.metric("Maior gasto", f"R$ {maior:,.2f}")
+                col4.metric("Nº de transações", qtd)
+
+            # Gráficos
+            if mostrar_graficos:
+                st.divider()
+
+                st.subheader("📊 Gastos por categoria")
+                if not df.empty:
+                    grafico_cat = alt.Chart(df).mark_bar(
+                        cornerRadiusTopLeft=5,
+                        cornerRadiusTopRight=5
+                    ).encode(
+                        x=alt.X("Categoria", sort="-y"),
+                        y="Valor",
+                        color="Categoria"
+                    ).properties(height=300)
+
+                    st.altair_chart(grafico_cat, use_container_width=True)
+
+                st.subheader("📈 Gastos ao longo do mês")
+                df_data = df.dropna(subset=["Data"])
+                if not df_data.empty:
+                    grafico_tempo = alt.Chart(df_data).mark_line(
+                        color="#4CAF50",
+                        strokeWidth=3
+                    ).encode(
+                        x="Data",
+                        y="Valor"
+                    ).properties(height=300)
+
+                    st.altair_chart(grafico_tempo, use_container_width=True)
+
+        # ============================
+        # PLANILHAS
+        # ============================
+
+        elif pagina == "Planilhas":
+
+            st.markdown(f"<h2 style='color:#4CAF50;'>🧾 Planilha — {nome}</h2>", unsafe_allow_html=True)
+
+            st.session_state.planilhas[nome] = st.data_editor(
+                df,
+                num_rows="dynamic",
+                key=f"editor_{nome}",
+                use_container_width=True,
+                column_config={
+                    "Descrição": st.column_config.TextColumn("Descrição"),
+                    "Categoria": st.column_config.SelectboxColumn(
+                        "Categoria",
+                        options=CATEGORIAS
+                    ),
+                    "Data": st.column_config.DateColumn("Data"),
+                    "Valor": st.column_config.NumberColumn("Valor", format="R$ %.2f"),
+                    "Observações": st.column_config.TextColumn("Observações")
+                }
+            )
+
+            if st.button(f"Calcular total de {nome}"):
+                df_calc = st.session_state.planilhas[nome].copy()
+                df_calc["Valor"] = pd.to_numeric(df_calc["Valor"], errors="coerce").fillna(0)
+                total = df_calc["Valor"].sum()
+                st.success(f"Total de gastos em {nome}: R$ {total:,.2f}")
+                st.dataframe(df_calc)

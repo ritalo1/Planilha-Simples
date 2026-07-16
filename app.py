@@ -73,9 +73,17 @@ with st.sidebar:
         ["Dashboard", "Planilhas"]
     )
 
-    mostrar_kpis = st.checkbox("Mostrar KPIs básicos", value=True)
-    mostrar_kpis_avancados = st.checkbox("Mostrar KPIs avançados", value=True)
-    mostrar_graficos = st.checkbox("Mostrar gráficos", value=True)
+    mostrar_kpis = st.checkbox("Mostrar KPIs", value=True)
+if mostrar_kpis:
+    mostrar_total_categoria = st.checkbox("Total por categoria", value=True)
+    mostrar_ticket_medio = st.checkbox("Ticket médio por categoria", value=True)
+    mostrar_dia_max = st.checkbox("Dia com maior gasto", value=True)
+
+mostrar_graficos = st.checkbox("Mostrar gráficos", value=True)
+if mostrar_graficos:
+    mostrar_pizza = st.checkbox("Gráfico de pizza", value=True)
+    mostrar_barras = st.checkbox("Gráfico de barras", value=True)
+    mostrar_linha = st.checkbox("Linha ao longo do mês", value=True)
 
     st.markdown("### Visualizações detalhadas")
 

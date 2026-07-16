@@ -203,13 +203,24 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
             st.markdown(f"<h2 style='color:#4CAF50;'>🧾 Planilha — {nome}</h2>", unsafe_allow_html=True)
 
             # Importar Excel
-            st.subheader("📥 Importar planilha Excel")
-            arquivo = st.file_uploader("Selecione um arquivo .xlsx", type=["xlsx"], key=f"upload_{nome}")
-            if arquivo:
-                df_importado = pd.read_excel(arquivo)
-                st.session_state.planilhas[nome] = df_importado
-                st.success("Planilha importada com sucesso!")
-                df = st.session_state.planilhas[nome]
+st.subheader("📥 Importar planilha Excel")
+arquivo = st.file_uploader("Selecione um arquivo .xlsx", type=["xlsx"], key=f"upload_{nome}")
+
+if arquivo:
+    df_importado = pd.read_excel(arquivo)
+
+    # Normaliza nomes das colunas
+    df_importado.columns = df_importado.columns.str.strip().str.title()
+
+    # Garante que todas as colunas existam
+    colunas_esperadas = ["Descrição", "Categoria", "Data", "Valor", "Observações"]
+    for col in colunas_esperadas:
+        if col not in df_importado.columns:
+            df_importado[col] = None
+
+    st.session_state.planilhas[nome] = df_importado
+    st.success("Planilha importada com sucesso!")
+    df = st.session_state.planilhas[nome]
 
             # Editor
             st.session_state.planilhas[nome] = st.data_editor(

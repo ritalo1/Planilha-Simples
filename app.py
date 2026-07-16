@@ -73,26 +73,19 @@ with st.sidebar:
         ["Dashboard", "Planilhas"]
     )
 
+    # KPIs
     mostrar_kpis = st.checkbox("Mostrar KPIs", value=True)
-if mostrar_kpis:
-    mostrar_total_categoria = st.checkbox("Total por categoria", value=True)
-    mostrar_ticket_medio = st.checkbox("Ticket médio por categoria", value=True)
-    mostrar_dia_max = st.checkbox("Dia com maior gasto", value=True)
+    if mostrar_kpis:
+        mostrar_total_categoria = st.checkbox("Total por categoria", value=True)
+        mostrar_ticket_medio = st.checkbox("Ticket médio por categoria", value=True)
+        mostrar_dia_max = st.checkbox("Dia com maior gasto", value=True)
 
-mostrar_graficos = st.checkbox("Mostrar gráficos", value=True)
-if mostrar_graficos:
-    mostrar_pizza = st.checkbox("Gráfico de pizza", value=True)
-    mostrar_barras = st.checkbox("Gráfico de barras", value=True)
-    mostrar_linha = st.checkbox("Linha ao longo do mês", value=True)
-
-    st.markdown("### Visualizações detalhadas")
-
-    mostrar_total_categoria = st.checkbox("Total por categoria", value=True)
-    mostrar_ticket_medio = st.checkbox("Ticket médio por categoria", value=True)
-    mostrar_dia_max = st.checkbox("Dia com maior gasto", value=True)
-    mostrar_pizza = st.checkbox("Gráfico de pizza", value=True)
-    mostrar_barras = st.checkbox("Gráfico de barras", value=True)
-    mostrar_linha = st.checkbox("Linha ao longo do mês", value=True)
+    # Gráficos
+    mostrar_graficos = st.checkbox("Mostrar gráficos", value=True)
+    if mostrar_graficos:
+        mostrar_pizza = st.checkbox("Gráfico de pizza", value=True)
+        mostrar_barras = st.checkbox("Gráfico de barras", value=True)
+        mostrar_linha = st.checkbox("Linha ao longo do mês", value=True)
 
     st.markdown("---")
     st.markdown("### Criar nova planilha")
@@ -186,105 +179,29 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
             df_kpi = df.copy()
             df_kpi["Valor"] = pd.to_numeric(df_kpi["Valor"], errors="coerce").fillna(0)
 
-            # CHAMADAS MODULARES
-            if mostrar_total_categoria:
-                df_cat = kpi_total_categoria(df_kpi)
-
-            if mostrar_ticket_medio:
-                kpi_ticket_medio(df_kpi)
-
-            if mostrar_dia_max:
-                kpi_dia_max(df_kpi)
-
-            if mostrar_pizza:
-                df_cat = df_kpi.groupby("Categoria", as_index=False)["Valor"].sum()
-                df_cat["Percentual"] = (df_cat["Valor"] / df_cat["Valor"].sum()) * 100
-                grafico_pizza(df_cat)
-
-            if mostrar_barras:
-                grafico_barras(df)
-
-            if mostrar_linha:
-                grafico_linha(df)
-            # KPIs básicos
+            # KPIs
             if mostrar_kpis:
-                st.subheader("📌 Indicadores do mês")
+                if mostrar_total_categoria:
+                    df_cat = kpi_total_categoria(df_kpi)
 
-                total = df_kpi["Valor"].sum()
-                media = df_kpi["Valor"].mean()
-                maior = df_kpi["Valor"].max()
-                qtd = len(df_kpi)
+                if mostrar_ticket_medio:
+                    kpi_ticket_medio(df_kpi)
 
-                col1, col2, col3, col4 = st.columns(4)
+                if mostrar_dia_max:
+                    kpi_dia_max(df_kpi)
 
-                col1.metric("Total gasto", f"R$ {total:,.2f}")
-                col2.metric("Média por gasto", f"R$ {media:,.2f}")
-                col3.metric("Maior gasto", f"R$ {maior:,.2f}")
-                col4.metric("Nº de transações", qtd)
-
-            # KPIs avançados
-            if mostrar_kpis_avancados and not df_kpi.empty:
-                st.divider()
-                st.subheader("📊 KPIs avançados")
-
-                # Total por categoria + percentual
-                df_cat = df_kpi.groupby("Categoria", as_index=False)["Valor"].sum()
-                df_cat["Percentual"] = (df_cat["Valor"] / df_cat["Valor"].sum()) * 100
-                st.write("Total por categoria")
-                st.dataframe(df_cat)
-
-                # Ticket médio por categoria
-                df_ticket = df_kpi.groupby("Categoria", as_index=False)["Valor"].mean()
-                df_ticket.rename(columns={"Valor": "Ticket Médio"}, inplace=True)
-                st.write("Ticket médio por categoria")
-                st.dataframe(df_ticket)
-
-                # Dia com maior gasto
-                df_data = df_kpi.dropna(subset=["Data"])
-                if not df_data.empty:
-                    dia_max = df_data.loc[df_data["Valor"].idxmax()]
-                    st.info(
-                        f"📅 Dia com maior gasto: {dia_max['Data'].date()} — R$ {dia_max['Valor']:,.2f}"
-                    )
-
-                # Gráfico de pizza
-                grafico_pizza = alt.Chart(df_cat).mark_arc().encode(
-                    theta="Valor",
-                    color="Categoria",
-                    tooltip=["Categoria", "Valor", "Percentual"]
-                )
-                st.subheader("🍕 Distribuição por categoria")
-                st.altair_chart(grafico_pizza, use_container_width=True)
-
-            # Gráficos principais
+            # Gráficos
             if mostrar_graficos:
-                st.divider()
+                if mostrar_pizza:
+                    df_cat = df_kpi.groupby("Categoria", as_index=False)["Valor"].sum()
+                    df_cat["Percentual"] = (df_cat["Valor"] / df_cat["Valor"].sum()) * 100
+                    grafico_pizza(df_cat)
 
-                st.subheader("📊 Gastos por categoria")
-                if not df.empty:
-                    grafico_cat = alt.Chart(df).mark_bar(
-                        cornerRadiusTopLeft=5,
-                        cornerRadiusTopRight=5
-                    ).encode(
-                        x=alt.X("Categoria", sort="-y"),
-                        y="Valor",
-                        color="Categoria"
-                    ).properties(height=300)
+                if mostrar_barras:
+                    grafico_barras(df)
 
-                    st.altair_chart(grafico_cat, use_container_width=True)
-
-                st.subheader("📈 Gastos ao longo do mês")
-                df_data = df.dropna(subset=["Data"])
-                if not df_data.empty:
-                    grafico_tempo = alt.Chart(df_data).mark_line(
-                        color="#4CAF50",
-                        strokeWidth=3
-                    ).encode(
-                        x="Data",
-                        y="Valor"
-                    ).properties(height=300)
-
-                    st.altair_chart(grafico_tempo, use_container_width=True)
+                if mostrar_linha:
+                    grafico_linha(df)
 
         # ============================
         # PLANILHAS
@@ -294,17 +211,13 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
 
             st.markdown(f"<h2 style='color:#4CAF50;'>🧾 Planilha — {nome}</h2>", unsafe_allow_html=True)
 
-            # Importar Excel
             st.subheader("📥 Importar planilha Excel")
             arquivo = st.file_uploader("Selecione um arquivo .xlsx", type=["xlsx"], key=f"upload_{nome}")
 
             if arquivo:
                 df_importado = pd.read_excel(arquivo)
-
-                # Normaliza nomes das colunas
                 df_importado.columns = df_importado.columns.str.strip().str.title()
 
-                # Garante colunas esperadas
                 colunas_esperadas = ["Descrição", "Categoria", "Data", "Valor", "Observações"]
                 for col in colunas_esperadas:
                     if col not in df_importado.columns:
@@ -313,7 +226,6 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
                 st.session_state.planilhas[nome] = df_importado
                 st.success("Planilha importada com sucesso!")
 
-            # Editor
             df = st.session_state.planilhas[nome]
 
             st.session_state.planilhas[nome] = st.data_editor(
@@ -323,17 +235,13 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
                 use_container_width=True,
                 column_config={
                     "Descrição": st.column_config.TextColumn("Descrição"),
-                    "Categoria": st.column_config.SelectboxColumn(
-                        "Categoria",
-                        options=CATEGORIAS
-                    ),
+                    "Categoria": st.column_config.SelectboxColumn("Categoria", options=CATEGORIAS),
                     "Data": st.column_config.DateColumn("Data"),
                     "Valor": st.column_config.NumberColumn("Valor", format="R$ %.2f"),
                     "Observações": st.column_config.TextColumn("Observações")
                 }
             )
 
-            # Total
             if st.button(f"Calcular total de {nome}"):
                 df_calc = st.session_state.planilhas[nome].copy()
                 df_calc["Valor"] = pd.to_numeric(df_calc["Valor"], errors="coerce").fillna(0)
@@ -341,7 +249,6 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
                 st.success(f"Total de gastos em {nome}: R$ {total:,.2f}")
                 st.dataframe(df_calc)
 
-            # Exportar Excel
             st.subheader("📤 Exportar planilha")
             df_export = st.session_state.planilhas[nome]
 
@@ -350,4 +257,4 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
                 data=to_excel(df_export),
                 file_name=f"{nome}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+    )

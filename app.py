@@ -4,7 +4,7 @@ import altair as alt
 from io import BytesIO
 
 # ============================
-# FUNÇÃO PARA EXPORTAR EXCEL
+# FUNÇÕES UTILITÁRIAS
 # ============================
 
 def to_excel(df):
@@ -14,103 +14,75 @@ def to_excel(df):
     writer.close()
     return output.getvalue()
 
-# ============================
-# CABEÇALHO MODERNO
-# ============================
+def limpar_planilha(df):
+    # Remove colunas Unnamed
+    df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
 
-st.markdown(
-    """
-    <h1 style='text-align: center; color: #4CAF50;'>
-        💸 Sistema de Gastos Mensais
-    </h1>
-    <p style='text-align: center; color: #CCCCCC;'>
-        Organize seus gastos, visualize gráficos e acompanhe indicadores.
-    </p>
-    """,
-    unsafe_allow_html=True
-)
+    # Remove linhas totalmente vazias
+    df = df.dropna(how="all")
 
-# ============================
-# CONFIGURAÇÕES
-# ============================
+    # Padroniza colunas
+    df.columns = df.columns.str.strip().str.title()
 
-CATEGORIAS = [
-    "Alimentação",
-    "Transporte",
-    "Moradia",
-    "Saúde",
-    "Lazer",
-    "Educação",
-    "Outros"
-]
+    # Garante colunas esperadas
+    colunas_esperadas = ["Descrição", "Categoria", "Data", "Valor", "Observações"]
+    for col in colunas_esperadas:
+        if col not in df.columns:
+            df[col] = None
 
-MODELO = {
-    "Descrição": [],
-    "Categoria": [],
-    "Data": [],
-    "Valor": [],
-    "Observações": []
-}
+    # Converte tipos básicos
+    df["Descrição"] = df["Descrição"].astype(str).str.strip()
+    df["Categoria"] = df["Categoria"].astype(str).str.strip()
+    df["Observações"] = df["Observações"].astype(str).str.strip()
 
-# ============================
-# INICIALIZAÇÃO
-# ============================
+    # Converte datas
+    df["Data"] = pd.to_datetime(df["Data"], errors="coerce")
 
-if "planilhas" not in st.session_state:
-    st.session_state.planilhas = {
-        "Janeiro": pd.DataFrame(MODELO)
-    }
-
-# ============================
-# MENU LATERAL
-# ============================
-
-with st.sidebar:
-    st.markdown("## ⚙️ Menu")
-
-    pagina = st.radio(
-        "Escolha a página",
-        ["Dashboard", "Planilhas"]
+    # Converte valores (tratando R$, ponto e vírgula)
+    df["Valor"] = (
+        df["Valor"]
+        .astype(str)
+        .str.replace("R$", "", regex=False)
+        .str.replace(" ", "", regex=False)
+        .str.replace(".", "", regex=False)
+        .str.replace(",", ".", regex=False)
     )
+    df["Valor"] = pd.to_numeric(df["Valor"], errors="coerce").fillna(0)
 
-    # ============================
-    # KPIs (pai)
-    # ============================
+    return df
 
-    mostrar_kpis = st.checkbox("📊 Mostrar KPIs", value=True)
+def aplicar_filtros(df, filtros_on, categorias_sel, data_ini, data_fim, vmin, vmax, texto):
+    if not filtros_on:
+        return df
 
-    if mostrar_kpis:
-        st.markdown("##### Tipos de KPIs")
+    df_filtrado = df.copy()
 
-        kpi_genericos = st.checkbox("KPIs genéricos (alfanuméricos)", value=True)
-        kpi_total_categoria = st.checkbox("Total por categoria", value=True)
-        kpi_ticket_medio = st.checkbox("Ticket médio por categoria", value=True)
-        kpi_dia_max = st.checkbox("Dia com maior gasto", value=True)
+    # Categoria
+    if categorias_sel:
+        df_filtrado = df_filtrado[df_filtrado["Categoria"].isin(categorias_sel)]
 
-    # ============================
-    # Gráficos (pai)
-    # ============================
+    # Datas
+    df_filtrado = df_filtrado[
+        (df_filtrado["Data"] >= pd.to_datetime(data_ini)) &
+        (df_filtrado["Data"] <= pd.to_datetime(data_fim))
+    ]
 
-    mostrar_graficos = st.checkbox("📈 Mostrar gráficos", value=True)
+    # Valores
+    df_filtrado = df_filtrado[
+        (df_filtrado["Valor"] >= vmin) &
+        (df_filtrado["Valor"] <= vmax)
+    ]
 
-    if mostrar_graficos:
-        st.markdown("##### Tipos de gráficos")
+    # Texto na descrição
+    if texto.strip():
+        df_filtrado = df_filtrado[
+            df_filtrado["Descrição"].str.contains(texto, case=False, na=False)
+        ]
 
-        grafico_generico = st.checkbox("Gráfico genérico (frequência)", value=True)
-        grafico_pizza = st.checkbox("Gráfico de pizza", value=True)
-        grafico_barras = st.checkbox("Gráfico de barras", value=True)
-        grafico_linha = st.checkbox("Linha ao longo do mês", value=True)
-
-    st.markdown("---")
-    st.markdown("### Criar nova planilha")
-    novo_nome = st.text_input("Nome da nova planilha (ex: Fevereiro)")
-    if st.button("Adicionar planilha"):
-        if novo_nome.strip() != "":
-            st.session_state.planilhas[novo_nome] = pd.DataFrame(MODELO)
-            st.success(f"Planilha '{novo_nome}' criada com sucesso!")
+    return df_filtrado
 
 # ============================
-# FUNÇÕES DE KPIs E GRÁFICOS
+# FUNÇÕES DE KPIs
 # ============================
 
 def kpi_valores_unicos(df, coluna):
@@ -147,14 +119,17 @@ def kpi_dia_max(df_kpi):
         dia_max = df_data.loc[df_data["Valor"].idxmax()]
         st.info(f"📅 Dia com maior gasto: {dia_max['Data'].date()} — R$ {dia_max['Valor']:,.2f}")
 
-def grafico_barras_generico(df, coluna):
+# ============================
+# FUNÇÕES DE GRÁFICOS
+# ============================
+
+def grafico_barras_generico(df, coluna, cor):
     freq = df[coluna].value_counts().reset_index()
     freq.columns = [coluna, "Frequência"]
 
-    grafico = alt.Chart(freq).mark_bar().encode(
+    grafico = alt.Chart(freq).mark_bar(color=cor).encode(
         x=alt.X(coluna, type="nominal"),
-        y=alt.Y("Frequência:Q"),
-        color=alt.Color(coluna, type="nominal")
+        y=alt.Y("Frequência:Q")
     )
 
     st.subheader(f"📊 Frequência de {coluna}")
@@ -169,29 +144,161 @@ def grafico_pizza(df_cat):
     st.subheader("🍕 Distribuição por categoria")
     st.altair_chart(grafico, use_container_width=True)
 
-def grafico_barras(df):
+def grafico_barras(df, cor):
     grafico = alt.Chart(df).mark_bar(
         cornerRadiusTopLeft=5,
-        cornerRadiusTopRight=5
+        cornerRadiusTopRight=5,
+        color=cor
     ).encode(
         x=alt.X("Categoria", sort="-y"),
-        y="Valor",
-        color="Categoria"
+        y="Valor"
     )
     st.subheader("📊 Gastos por categoria")
     st.altair_chart(grafico, use_container_width=True)
 
-def grafico_linha(df):
+def grafico_linha(df, cor):
     df_data = df.dropna(subset=["Data"])
     grafico = alt.Chart(df_data).mark_line(
-        color="#4CAF50",
+        color=cor,
         strokeWidth=3
     ).encode(
         x="Data",
         y="Valor"
     )
-    st.subheader("📈 Gastos ao longo do mês")
+    st.subheader("📈 Gastos ao longo do tempo")
     st.altair_chart(grafico, use_container_width=True)
+
+def grafico_histograma(df, cor):
+    grafico = alt.Chart(df).mark_bar(color=cor).encode(
+        x=alt.X("Valor", bin=alt.Bin(maxbins=20)),
+        y="count()"
+    )
+    st.subheader("📊 Histograma de valores")
+    st.altair_chart(grafico, use_container_width=True)
+
+def grafico_boxplot(df):
+    grafico = alt.Chart(df).mark_boxplot().encode(
+        x="Categoria",
+        y="Valor"
+    )
+    st.subheader("📦 Boxplot de valores por categoria")
+    st.altair_chart(grafico, use_container_width=True)
+
+# ============================
+# CONFIGURAÇÕES
+# ============================
+
+CATEGORIAS = [
+    "Alimentação",
+    "Transporte",
+    "Moradia",
+    "Saúde",
+    "Lazer",
+    "Educação",
+    "Outros"
+]
+
+MODELO = {
+    "Descrição": [],
+    "Categoria": [],
+    "Data": [],
+    "Valor": [],
+    "Observações": []
+}
+
+if "planilhas" not in st.session_state:
+    st.session_state.planilhas = {
+        "Janeiro": pd.DataFrame(MODELO)
+    }
+
+if "cor_grafico" not in st.session_state:
+    st.session_state.cor_grafico = "#4CAF50"
+
+# ============================
+# CABEÇALHO
+# ============================
+
+st.markdown(
+    """
+    <h1 style='text-align: center; color: #4CAF50;'>
+        💸 Sistema de Gastos Mensais
+    </h1>
+    <p style='text-align: center; color: #CCCCCC;'>
+        Ferramenta de trabalho — visão de Data Analyst Jr.
+    </p>
+    """,
+    unsafe_allow_html=True
+)
+
+# ============================
+# SIDEBAR INTELIGENTE
+# ============================
+
+with st.sidebar:
+    st.markdown("## ⚙️ Menu")
+
+    pagina = st.radio(
+        "Escolha a página",
+        ["Dashboard", "Planilhas"]
+    )
+
+    st.markdown("---")
+
+    if pagina == "Dashboard":
+        # Switch KPIs
+        mostrar_kpis = st.checkbox("[📊] Mostrar KPIs", value=True)
+        if mostrar_kpis:
+            st.markdown("**[📦] Tipos de KPIs**")
+            kpi_genericos = st.checkbox("KPIs genéricos", value=True)
+            kpi_total_categoria_on = st.checkbox("Total por categoria", value=True)
+            kpi_ticket_medio_on = st.checkbox("Ticket médio por categoria", value=True)
+            kpi_dia_max_on = st.checkbox("Dia com maior gasto", value=True)
+
+        st.markdown("---")
+
+        # Switch Gráficos
+        mostrar_graficos = st.checkbox("[📈] Mostrar gráficos", value=True)
+        if mostrar_graficos:
+            st.markdown("**[🧩] Tipos de gráficos**")
+            grafico_generico_on = st.checkbox("Gráfico genérico (frequência)", value=True)
+            grafico_pizza_on = st.checkbox("Gráfico de pizza", value=True)
+            grafico_barras_on = st.checkbox("Gráfico de barras", value=True)
+            grafico_linha_on = st.checkbox("Gráfico de linha", value=True)
+            grafico_histograma_on = st.checkbox("Histograma de valores", value=False)
+            grafico_boxplot_on = st.checkbox("Boxplot por categoria", value=False)
+
+        st.markdown("---")
+
+        # Filtros avançados
+        filtros_on = st.checkbox("[🔎] Filtros avançados", value=False)
+        if filtros_on:
+            st.markdown("**Filtros**")
+            # Esses controles serão usados na página Dashboard
+            st.session_state.filtros_categorias = st.multiselect(
+                "Categorias",
+                options=list(st.session_state.planilhas.values())[0]["Categoria"].unique()
+                if len(st.session_state.planilhas) > 0 else []
+            )
+
+            # Valores padrão serão ajustados na página com base no df
+            st.session_state.filtros_texto = st.text_input("Buscar na descrição", "")
+
+        st.markdown("---")
+
+        # Configurações avançadas
+        avancado_on = st.checkbox("[⚙️] Configurações avançadas de visualização", value=False)
+        if avancado_on:
+            st.session_state.cor_grafico = st.color_picker(
+                "Cor principal dos gráficos",
+                value=st.session_state.cor_grafico
+            )
+
+    elif pagina == "Planilhas":
+        st.markdown("**[📥] Importação e operações**")
+        st.markdown("Use a aba de cada mês para editar, limpar e exportar.")
+        st.markdown("---")
+        st.markdown("**[🧹] Limpeza e cálculo** na aba Planilhas.")
+        st.markdown("**[📤] Exportar** também está na aba Planilhas.")
 
 # ============================
 # CONTEÚDO PRINCIPAL
@@ -201,79 +308,103 @@ abas = st.tabs(list(st.session_state.planilhas.keys()))
 
 for nome, aba in zip(st.session_state.planilhas.keys(), abas):
     with aba:
-
         df = st.session_state.planilhas[nome]
 
-        # Remove colunas Unnamed automaticamente
-        df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
-
-        df["Descrição"] = df["Descrição"].astype(str)
-        df["Categoria"] = df["Categoria"].astype(str)
-        df["Observações"] = df["Observações"].astype(str)
-        df["Data"] = pd.to_datetime(df["Data"], errors="coerce")
-        df["Valor"] = pd.to_numeric(df["Valor"], errors="coerce")
-
-        # Atualiza opções da sidebar
-        st.sidebar.selectbox("Escolha a coluna para KPIs", df.columns, key=f"kpi_col_{nome}")
-        st.sidebar.selectbox("Escolha a coluna para gráficos", df.columns, key=f"graf_col_{nome}")
-
-        # ============================
-        # DASHBOARD
-        # ============================
+        # Limpeza básica sempre
+        df = limpar_planilha(df)
+        st.session_state.planilhas[nome] = df
 
         if pagina == "Dashboard":
-
             st.markdown(f"<h2 style='color:#4CAF50;'>📊 Dashboard — {nome}</h2>", unsafe_allow_html=True)
 
-            df_kpi = df.copy()
-            df_kpi["Valor"] = pd.to_numeric(df_kpi["Valor"], errors="coerce").fillna(0)
+            # Seleção de colunas para KPIs e gráficos
+            if len(df.columns) > 0:
+                coluna_kpi = st.selectbox("Coluna para KPIs", df.columns, key=f"kpi_col_{nome}")
+                coluna_grafico = st.selectbox("Coluna para gráfico genérico", df.columns, key=f"graf_col_{nome}")
+            else:
+                st.warning("Planilha vazia. Vá na aba Planilhas e preencha os dados.")
+                continue
 
-            coluna_kpi = st.session_state[f"kpi_col_{nome}"]
-            coluna_grafico = st.session_state[f"graf_col_{nome}"]
+            # Filtros avançados (com base no df)
+            if 'filtros_categorias' not in st.session_state:
+                st.session_state.filtros_categorias = []
 
-            # KPIs genéricos
-            if mostrar_kpis and kpi_genericos and coluna_kpi in df.columns:
-                kpi_valores_unicos(df, coluna_kpi)
-                kpi_frequencia(df, coluna_kpi)
-                kpi_mais_comum(df, coluna_kpi)
+            if 'filtros_texto' not in st.session_state:
+                st.session_state.filtros_texto = ""
 
-            # KPIs específicos
-            if mostrar_kpis:
-                if kpi_total_categoria:
+            data_min = df["Data"].min() if not df["Data"].isna().all() else pd.to_datetime("2024-01-01")
+            data_max = df["Data"].max() if not df["Data"].isna().all() else pd.to_datetime("2024-12-31")
+            valor_min_default = float(df["Valor"].min()) if not df["Valor"].isna().all() else 0.0
+            valor_max_default = float(df["Valor"].max()) if not df["Valor"].isna().all() else 1000.0
+
+            if 'filtros_on' in locals() and filtros_on:
+                col_f1, col_f2 = st.columns(2)
+                with col_f1:
+                    data_ini = st.date_input("Data inicial", data_min)
+                    vmin = st.number_input("Valor mínimo", value=valor_min_default)
+                with col_f2:
+                    data_fim = st.date_input("Data final", data_max)
+                    vmax = st.number_input("Valor máximo", value=valor_max_default)
+
+                df_filtrado = aplicar_filtros(
+                    df,
+                    True,
+                    st.session_state.filtros_categorias,
+                    data_ini,
+                    data_fim,
+                    vmin,
+                    vmax,
+                    st.session_state.filtros_texto
+                )
+            else:
+                df_filtrado = df.copy()
+
+            df_kpi = df_filtrado.copy()
+
+            # KPIs
+            if 'mostrar_kpis' in locals() and mostrar_kpis:
+                if 'kpi_genericos' in locals() and kpi_genericos and coluna_kpi in df_filtrado.columns:
+                    kpi_valores_unicos(df_filtrado, coluna_kpi)
+                    kpi_frequencia(df_filtrado, coluna_kpi)
+                    kpi_mais_comum(df_filtrado, coluna_kpi)
+
+                if 'kpi_total_categoria_on' in locals() and kpi_total_categoria_on:
                     df_cat = kpi_total_categoria(df_kpi)
 
-                if kpi_ticket_medio:
+                if 'kpi_ticket_medio_on' in locals() and kpi_ticket_medio_on:
                     kpi_ticket_medio(df_kpi)
 
-                if kpi_dia_max:
+                if 'kpi_dia_max_on' in locals() and kpi_dia_max_on:
                     kpi_dia_max(df_kpi)
 
-            # Gráficos genéricos
-            if mostrar_graficos and grafico_generico and coluna_grafico in df.columns:
-                grafico_barras_generico(df, coluna_grafico)
+            # Gráficos
+            cor = st.session_state.cor_grafico
 
-            # Gráficos específicos
-            if mostrar_graficos:
-                if grafico_pizza:
+            if 'mostrar_graficos' in locals() and mostrar_graficos:
+                if 'grafico_generico_on' in locals() and grafico_generico_on and coluna_grafico in df_filtrado.columns:
+                    grafico_barras_generico(df_filtrado, coluna_grafico, cor)
+
+                if 'grafico_pizza_on' in locals() and grafico_pizza_on:
                     df_cat = df_kpi.groupby("Categoria", as_index=False)["Valor"].sum()
                     df_cat["Percentual"] = (df_cat["Valor"] / df_cat["Valor"].sum()) * 100
                     grafico_pizza(df_cat)
 
-                if grafico_barras:
-                    grafico_barras(df)
+                if 'grafico_barras_on' in locals() and grafico_barras_on:
+                    grafico_barras(df_kpi, cor)
 
-                if grafico_linha:
-                    grafico_linha(df)
+                if 'grafico_linha_on' in locals() and grafico_linha_on:
+                    grafico_linha(df_kpi, cor)
 
-        # ============================
-        # PLANILHAS
-        # ============================
+                if 'grafico_histograma_on' in locals() and grafico_histograma_on:
+                    grafico_histograma(df_kpi, cor)
+
+                if 'grafico_boxplot_on' in locals() and grafico_boxplot_on:
+                    grafico_boxplot(df_kpi)
 
         elif pagina == "Planilhas":
-
             st.markdown(f"<h2 style='color:#4CAF50;'>🧾 Planilha — {nome}</h2>", unsafe_allow_html=True)
 
-            st.subheader("📥 Importar planilha Excel")
+            st.subheader("[📥] Importar planilha")
             arquivo = st.file_uploader(
                 "Selecione um arquivo",
                 type=["xlsx", "xlsm", "ods", "csv", "tsv"],
@@ -283,36 +414,20 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
             if arquivo:
                 nome_arquivo = arquivo.name.lower()
 
-                # CSV / TSV
                 if nome_arquivo.endswith(".csv") or nome_arquivo.endswith(".tsv"):
                     df_importado = pd.read_csv(arquivo)
-
-                # XLSX / XLSM / ODS
                 elif nome_arquivo.endswith(".xlsx") or nome_arquivo.endswith(".xlsm") or nome_arquivo.endswith(".ods"):
                     df_importado = pd.read_excel(arquivo, engine="openpyxl")
-
-                # XLS (não suportado)
-                elif nome_arquivo.endswith(".xls"):
-                    st.error("❌ Arquivos .xls não são suportados. Converta para .xlsx antes de importar.")
-                    st.stop()
-
                 else:
                     st.error("❌ Formato de arquivo não reconhecido.")
                     st.stop()
 
-                # Normaliza colunas
-                df_importado.columns = df_importado.columns.str.strip().str.title()
-                df_importado = df_importado.loc[:, ~df_importado.columns.str.contains("^Unnamed")]
-
-                # Garante colunas esperadas
-                colunas_esperadas = ["Descrição", "Categoria", "Data", "Valor", "Observações"]
-                for col in colunas_esperadas:
-                    if col not in df_importado.columns:
-                        df_importado[col] = None
-
+                df_importado = limpar_planilha(df_importado)
                 st.session_state.planilhas[nome] = df_importado
-                st.success("Planilha importada com sucesso!")
+                df = df_importado
+                st.success("Planilha importada e limpa com sucesso!")
 
+            st.subheader("[✏️] Editar dados")
             df = st.session_state.planilhas[nome]
 
             st.session_state.planilhas[nome] = st.data_editor(
@@ -329,19 +444,28 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
                 }
             )
 
-            if st.button(f"Calcular total de {nome}"):
-                df_calc = st.session_state.planilhas[nome].copy()
-                df_calc["Valor"] = pd.to_numeric(df_calc["Valor"], errors="coerce").fillna(0)
-                total = df_calc["Valor"].sum()
-                st.success(f"Total de gastos em {nome}: R$ {total:,.2f}")
-                st.dataframe(df_calc)
+            col_b1, col_b2, col_b3 = st.columns(3)
 
-            st.subheader("📤 Exportar planilha")
-            df_export = st.session_state.planilhas[nome]
+            with col_b1:
+                if st.button(f"[🧹] Limpar planilha — {nome}"):
+                    df_limpo = limpar_planilha(st.session_state.planilhas[nome])
+                    st.session_state.planilhas[nome] = df_limpo
+                    st.success("Planilha limpa com sucesso!")
+                    st.dataframe(df_limpo)
 
-            st.download_button(
-                label="📤 Exportar para Excel",
-                data=to_excel(df_export),
-                file_name=f"{nome}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+            with col_b2:
+                if st.button(f"[🧮] Calcular total — {nome}"):
+                    df_calc = limpar_planilha(st.session_state.planilhas[nome].copy())
+                    total = df_calc["Valor"].sum()
+                    st.success(f"Total de gastos em {nome}: R$ {total:,.2f}")
+                    st.dataframe(df_calc)
+
+            with col_b3:
+                st.subheader("")
+                df_export = st.session_state.planilhas[nome]
+                st.download_button(
+                    label="[📤] Exportar para Excel",
+                    data=to_excel(df_export),
+                    file_name=f"{nome}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                   )

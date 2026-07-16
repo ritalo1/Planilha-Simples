@@ -64,7 +64,8 @@ streamlit run app.py
 > **[👤] Autor:**
 - Raphael I. S. Lima
  
-> Estudante de Estatística e aspirante a Data Analyst
-> Apaixonado por transformar dados em insights, criar dashboards intuitivos e desenvolver soluções práticas em Python e Streamlit.
+> — Estudante de Estatística e aspirante a Data Analyst
+
+> — Apaixonado por transformar dados em insights, criar dashboards intuitivos e desenvolver soluções práticas em Python e Streamlit.
 
 - Projeto desenvolvido com auxílio de *Microsoft Copilot* (GenAI) para fins de estudo e portfólio.

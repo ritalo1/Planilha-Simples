@@ -441,6 +441,7 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
 
             if arquivo:
                 nome_arquivo = arquivo.name.lower()
+
                 if nome_arquivo.endswith((".csv", ".tsv")):
                     df_importado = pd.read_csv(arquivo)
                 else:
@@ -449,6 +450,7 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
                 st.info("Mapeie as colunas do arquivo para o padrão do sistema:")
 
                 colunas_detectadas = list(df_importado.columns)
+
                 col_desc = st.selectbox("Coluna de Descrição", colunas_detectadas, key=f"map_desc_{nome}")
                 col_cat = st.selectbox("Coluna de Categoria", colunas_detectadas, key=f"map_cat_{nome}")
                 col_val = st.selectbox("Coluna de Valor", colunas_detectadas, key=f"map_val_{nome}")
@@ -461,10 +463,12 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
                         col_val: "Valor",
                         col_data: "Data"
                     })
+
                     df_importado = limpar_planilha(df_importado)
                     st.session_state.planilhas[nome] = df_importado
                     df = df_importado
-                    st.success("Planilha importada, mapeada e limpa.")
+
+                    st.success("Planilha importada, mapeada e limpa com sucesso!")
 
             st.subheader("✏️ Editar dados")
             df = st.session_state.planilhas[nome]
@@ -485,25 +489,94 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
 
             col_b1, col_b2, col_b3 = st.columns(3)
 
-with col_b1:
-    if st.button(f"🧹 Limpar planilha — {nome}"):
-        df_limpo = limpar_planilha(st.session_state.planilhas[nome])
-        st.session_state.planilhas[nome] = df_limpo
-        st.success("Planilha limpa.")
-        st.dataframe(df_limpo, use_container_width=True)
+            with col_b1:
+                if st.button(f"🧹 Limpar planilha — {nome}"):
+                    df_limpo = limpar_planilha(st.session_state.planilhas[nome])
+                    st.session_state.planilhas[nome] = df_limpo
+                    st.success("Planilha limpa.")
+                    st.dataframe(df_limpo, use_container_width=True)
 
-with col_b2:
-    if st.button(f"🧮 Calcular total — {nome}"):
-        df_calc = limpar_planilha(st.session_state.planilhas[nome].copy())
-        total = df_calc["Valor"].sum()
-        st.success(f"Total de gastos em {nome}: R$ {total:,.2f}")
-        st.dataframe(df_calc, use_container_width=True)
+            with col_b2:
+                if st.button(f"🧮 Calcular total — {nome}"):
+                    df_calc = limpar_planilha(st.session_state.planilhas[nome].copy())
+                    total = df_calc["Valor"].sum()
+                    st.success(f"Total de gastos em {nome}: R$ {total:,.2f}")
+                    st.dataframe(df_calc, use_container_width=True)
 
-with col_b3:
-    df_export = st.session_state.planilhas[nome]
-    st.download_button(
-        label="📤 Exportar para Excel",
-        data=to_excel(df_export),
-        file_name=f"{nome}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+            with col_b3:
+               df_export = st.session_state.planilhas[nome]
+                st.download_button(
+                    label="📤 Exportar para Excel",
+                    data=to_excel(df_export),
+                    file_name=f"{nome}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+
+        # ============================
+        # CONSOLE SQL
+        # ============================
+        elif pagina == "Console SQL":
+            st.markdown(
+                f"<h3 style='color:#4CAF50;'>💻 Console SQL — {nome}</h3>",
+                unsafe_allow_html=True
+            )
+
+            for mes_db, df_db in st.session_state.planilhas.items():
+                globals()[f"df_{mes_db.lower()}"] = df_db
+
+            query_padrao = (
+                f"SELECT Categoria, SUM(Valor) AS total_gasto\n"
+                f"FROM df_{nome.lower()}\n"
+                f"GROUP BY Categoria\n"
+                f"ORDER BY total_gasto DESC"
+            )
+
+            sql_query = st.text_area(
+                "Escreva sua consulta SQL (DuckDB):",
+                value=query_padrao,
+                height=140,
+                help="Use df_<nomedomes>, ex: SELECT * FROM df_janeiro"
+            )
+
+            if st.button("⚡ Executar SQL", key=f"run_sql_{nome}"):
+                try:
+                    resultado_df = duckdb.query(sql_query).to_df()
+                    st.success("Query executada com sucesso.")
+
+                    col_res1, col_res2 = st.columns(2)
+
+                    with col_res1:
+                        st.markdown("#### 📋 Resultado")
+                        st.dataframe(resultado_df, use_container_width=True)
+                        st.download_button(
+                            label="📥 Baixar resultado em Excel",
+                            data=to_excel(resultado_df),
+                            file_name=f"resultado_sql_{nome.lower()}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            key=f"dl_sql_{nome}"
+                        )
+
+                    with col_res2:
+                        st.markdown("#### 📊 Gráfico automático")
+                        colunas_retornadas = list(resultado_df.columns)
+                        if len(colunas_retornadas) >= 2:
+                            x_axis = colunas_retornadas[0]
+                            y_axis = colunas_retornadas[1]
+                            st.info(f"Visualização: {x_axis} x {y_axis}")
+
+                            grafico_auto = alt.Chart(resultado_df).mark_bar(
+                                color=st.session_state.cor_grafico,
+                                cornerRadiusTopLeft=5,
+                                cornerRadiusTopRight=5
+                            ).encode(
+                                x=alt.X(x_axis, sort="-y", title=x_axis),
+                                y=alt.Y(y_axis, title=y_axis),
+                                tooltip=colunas_retornadas
+                            ).properties(height=280)
+
+                            st.altair_chart(grafico_auto, use_container_width=True)
+                        else:
+                            st.warning("Retorne pelo menos 2 colunas para gerar gráfico.")
+                except Exception as error:
+                    st.error(f"Erro ao executar SQL: {error}")
+                     

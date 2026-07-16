@@ -266,7 +266,7 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
           st.markdown(f"<h2 style='color:#4CAF50;'>🧾 Planilha — {nome}</h2>", unsafe_allow_html=True)
 
           st.subheader("📥 Importar planilha Excel")
-            arquivo = st.file_uploader(
+          arquivo = st.file_uploader(
             "Selecione um arquivo",
             type=["xlsx", "xls", "xlsm", "ods", "csv", "tsv"],
             key=f"upload_{nome}"

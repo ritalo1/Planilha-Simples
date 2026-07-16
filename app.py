@@ -117,6 +117,33 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
                 col3.metric("Maior gasto", f"R$ {maior:,.2f}")
                 col4.metric("Nº de transações", qtd)
 
+                st.divider()
+st.subheader("📊 KPIs avançados")
+
+# Total por categoria
+df_cat = df_kpi.groupby("Categoria", as_index=False)["Valor"].sum()
+df_cat["Percentual"] = (df_cat["Valor"] / df_cat["Valor"].sum()) * 100
+st.dataframe(df_cat)
+
+# Ticket médio
+df_ticket = df_kpi.groupby("Categoria", as_index=False)["Valor"].mean()
+df_ticket.rename(columns={"Valor": "Ticket Médio"}, inplace=True)
+st.dataframe(df_ticket)
+
+# Dia com maior gasto
+df_data = df_kpi.dropna(subset=["Data"])
+if not df_data.empty:
+    dia_max = df_data.loc[df_data["Valor"].idxmax()]
+    st.info(f"📅 Dia com maior gasto: {dia_max['Data'].date()} — R$ {dia_max['Valor']:,.2f}")
+
+# Pizza
+grafico_pizza = alt.Chart(df_cat).mark_arc().encode(
+    theta="Valor",
+    color="Categoria",
+    tooltip=["Categoria", "Valor", "Percentual"]
+)
+st.altair_chart(grafico_pizza, use_container_width=True)
+            
             # Gráficos
             if mostrar_graficos:
                 st.divider()

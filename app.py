@@ -569,4 +569,26 @@ for nome, aba in zip(st.session_state.planilhas.keys(), abas):
 
             col_b1, col_b2, col_b3 = st.columns(3)
 
-            with col_b
+            with col_b1:
+                if st.button(f"[🧹] Limpar planilha — {nome}"):
+                    df_limpo = limpar_planilha(st.session_state.planilhas[nome])
+                    st.session_state.planilhas[nome] = df_limpo
+                    st.success("Planilha limpa com sucesso!")
+                    st.dataframe(df_limpo)
+
+            with col_b2:
+                if st.button(f"[🧮] Calcular total — {nome}"):
+                    df_calc = st.session_state.planilhas[nome].copy()
+                    df_calc = limpar_planilha(df_calc)
+                    total = df_calc["Valor"].sum()
+                    st.success(f"Total de gastos em {nome}: R$ {total:,.2f}")
+                    st.dataframe(df_calc)
+
+            with col_b3:
+                df_export = st.session_state.planilhas[nome]
+                st.download_button(
+                    label="[📤] Exportar para Excel",
+                    data=to_excel(df_export),
+                    file_name=f"{nome}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )

@@ -136,11 +136,11 @@ def render_planilhas(df, nome):
             # 1. Executa a limpeza estrutural de dados primeiro
             df_limpo = limpar_planilha(
                 df_atual,
-                usar_ia=False, # Tratamos a IA direto aqui para blindar o retorno
+                usar_ia=False,
                 ia_resumo_fn=None
             )
             
-            # 2. Se o usuário usou a IA, disparada de forma isolada e segura
+            # 2. Se o usuário usou a IA, dispara de forma isolada e segura
             if limpar_com_ia and usar_ia:
                 relatorio_ia = resumo_planilha(df_limpo, instrucoes_ia=prompt_usuario)
                 st.session_state.ultimo_resumo_ia[nome] = {
@@ -157,8 +157,14 @@ def render_planilhas(df, nome):
         with st.expander("📋 Ver detalhes técnicos e logs do PocketDBA", expanded=True):
             st.markdown("**Instruções aplicadas no pipeline:**")
             st.code(st.session_state.ultimo_resumo_ia[nome]["prompt"])
-            st.markdown("**Relatório de Auditoria:**")
-            st.markdown(st.session_state.ultimo_resumo_ia[nome]["resultado"], unsafe_allow_html=True)
+            
+            st.markdown("---")
+            # Identidade visual montada de forma segura na interface
+            st.markdown("### <span style='color:#9b5de5;'>[📊] Pocket</span><span style='color:#f4a261;'>DBA</span>", unsafe_allow_html=True)
+            st.markdown("---")
+            
+            # Renderiza o texto puro em Markdown perfeitamente
+            st.markdown(st.session_state.ultimo_resumo_ia[nome]["resultado"])
 
     # ==========================================
     # 5. BLOCO DE AÇÕES FINAIS

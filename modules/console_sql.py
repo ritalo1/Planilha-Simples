@@ -9,9 +9,8 @@ def render_console_sql(df, nome):
     sql_query = st.text_area("SQL:", height=150)
 
     if st.button("⚡ Executar"):
-        sql_corrigido = corrigir_sql(sql_query)
-
         try:
+            sql_corrigido = corrigir_sql(sql_query)
             resultado = duckdb.query(sql_corrigido).to_df()
             st.dataframe(resultado, use_container_width=True)
 
@@ -22,4 +21,4 @@ def render_console_sql(df, nome):
             )
 
         except Exception as e:
-            st.error(f"Erro: {e}")
+            st.error(f"Erro ao executar SQL: {e}")

@@ -5,15 +5,20 @@ from modules.utils import to_excel
 from modules.transformacoes import (
     criar_coluna, substituir_valores, preencher_vazios, regra_condicional_simples
 )
+from modules.ia_sql import resumo_planilha
 
 def render_planilhas(df, nome):
     st.markdown(
-        f"<h3 style='color:#4CAF50;'>🧾 Planilha — {nome}</h3>",
+        f"<h3 style='color:#9b5de5;'>[🧾] Planilhas — {nome}</h3>",
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        "<p style='color:#BBBBBB; font-size:14px;'>Edite, limpe e transforme seus dados com ferramentas rápidas.</p>",
         unsafe_allow_html=True
     )
 
-    # Importar planilha
-    st.subheader("📥 Importar planilha")
+    # Importar
+    st.subheader("[📥] Importar planilha")
     arquivo = st.file_uploader(
         "Selecione um arquivo",
         type=["xlsx", "xlsm", "ods", "csv", "tsv"],
@@ -55,14 +60,14 @@ def render_planilhas(df, nome):
 
             st.success("Planilha importada, mapeada e limpa com sucesso!")
 
-    # Editor
-    st.subheader("✏️ Editar dados")
-
+    # Estado
     if "planilhas" not in st.session_state:
         st.session_state.planilhas = {}
     if nome not in st.session_state.planilhas:
         st.session_state.planilhas[nome] = df
 
+    # Editor
+    st.subheader("[✏️] Editar dados")
     df = st.session_state.planilhas[nome]
     df = df.loc[:, ~df.columns.duplicated()].copy()
     df = df.reset_index(drop=True)
@@ -74,8 +79,8 @@ def render_planilhas(df, nome):
         use_container_width=True
     )
 
-    # Ferramentas simples (modo A)
-    st.markdown("### 🛠 Ferramentas rápidas (modo simples)")
+    # Ferramentas simples
+    st.markdown("### [🛠] Ferramentas rápidas")
 
     col_t1, col_t2, col_t3, col_t4 = st.columns(4)
 
@@ -124,8 +129,20 @@ def render_planilhas(df, nome):
             st.session_state.planilhas[nome] = df
             st.success("Regra aplicada.")
 
-    # Botões finais
-    st.markdown("### 📦 Ações")
+    # Caixa de IA abaixo da planilha
+    st.markdown("### [🤖] Assistente IA para a planilha")
+    msg = st.text_area("Peça algo sobre esta planilha (ex.: 'Me dê um resumo.')", key=f"ia_msg_{nome}")
+    if st.button("Me dê um resumo.", key=f"btn_resumo_{nome}"):
+        df_atual = st.session_state.planilhas[nome]
+        resumo = resumo_planilha(df_atual)
+        if "ia_log" not in st.session_state:
+            st.session_state.ia_log = ""
+        st.session_state.ia_log += f"\n\n[Resumo PocketDBA]\n{resumo}"
+        st.success("Resumo gerado. Veja na janela de IA no canto da tela.")
+        st.write(resumo)
+
+    # Ações
+    st.markdown("### [📦] Ações")
 
     col_b1, col_b2, col_b3 = st.columns(3)
 
@@ -139,12 +156,12 @@ def render_planilhas(df, nome):
         if st.button(f"🧮 Calcular total — {nome}"):
             df_calc = limpar_planilha(st.session_state.planilhas[nome].copy())
             total = df_calc["Valor"].sum()
-            st.success(f"Total de gastos em {nome}: R$ {total:,.2f}")
+            st.success(f"Total de valores em {nome}: {total:,.2f}")
 
     with col_b3:
         df_export = st.session_state.planilhas[nome]
         st.download_button(
-            label="📤 Exportar para Excel",
+            label="[📤] Exportar para Excel",
             data=to_excel(df_export),
             file_name=f"{nome}.xlsx"
-        )
+    )

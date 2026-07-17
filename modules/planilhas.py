@@ -1,11 +1,21 @@
 import streamlit as st
 import pandas as pd
+from string import ascii_uppercase
+
 from modules.etl import limpar_planilha
 from modules.utils import to_excel
-from modules.transformacoes import (
-    criar_coluna, substituir_valores, preencher_vazios, regra_condicional_simples
-)
 from modules.ia_sql import resumo_planilha
+
+def _col_letters(n_cols):
+    letras = []
+    for i in range(n_cols):
+        # estilo Excel: A, B, ..., Z, AA, AB...
+        div, mod = divmod(i, 26)
+        letra = ascii_uppercase[mod]
+        if div > 0:
+            letra = ascii_uppercase[div - 1] + letra
+        letras.append(letra)
+    return letras
 
 def render_planilhas(df, nome):
     st.markdown(
@@ -13,9 +23,12 @@ def render_planilhas(df, nome):
         unsafe_allow_html=True
     )
     st.markdown(
-        "<p style='color:#BBBBBB; font-size:14px;'>Edite, limpe e transforme seus dados com ferramentas rápidas.</p>",
+        "<p style='color:#BBBBBB; font-size:14px;'>Edite, desenhe e limpe suas planilhas com auxílio opcional do PocketDBA.</p>",
         unsafe_allow_html=True
     )
+
+    # Nome da planilha editável
+    novo_nome = st.text_input("Nome da planilha:", value=nome, key=f"nome_planilha_{nome}")
 
     # Importar
     st.subheader("[📥] Importar planilha")
@@ -24,6 +37,11 @@ def render_planilhas(df, nome):
         type=["xlsx", "xlsm", "ods", "csv", "tsv"],
         key=f"upload_{nome}"
     )
+
+    if "planilhas" not in st.session_state:
+        st.session_state.planilhas = {}
+    if novo_nome not in st.session_state.planilhas:
+        st.session_state.planilhas[novo_nome] = df
 
     if arquivo:
         nome_arquivo = arquivo.name.lower()
@@ -34,134 +52,77 @@ def render_planilhas(df, nome):
             df_importado = pd.read_excel(arquivo)
 
         df_importado = df_importado.loc[:, ~df_importado.columns.duplicated()].copy()
-        colunas_detectadas = list(df_importado.columns)
-
-        st.info("Mapeie as colunas do arquivo para o padrão do PocketDBA:")
-
-        col_desc = st.selectbox("Coluna de Descrição", colunas_detectadas, key=f"map_desc_{nome}")
-        col_cat = st.selectbox("Coluna de Categoria", colunas_detectadas, key=f"map_cat_{nome}")
-        col_val = st.selectbox("Coluna de Valor", colunas_detectadas, key=f"map_val_{nome}")
-        col_data = st.selectbox("Coluna de Data", colunas_detectadas, key=f"map_data_{nome}")
-
-        if st.button("Confirmar mapeamento e limpar", key=f"map_btn_{nome}"):
-
-            df_importado = df_importado.rename(columns={
-                col_desc: "Descrição",
-                col_cat: "Categoria",
-                col_val: "Valor",
-                col_data: "Data"
-            })
-
-            df_importado = df_importado.loc[:, ~df_importado.columns.duplicated()].copy()
-            df_importado = limpar_planilha(df_importado)
-
-            st.session_state.planilhas[nome] = df_importado
-            df = df_importado
-
-            st.success("Planilha importada, mapeada e limpa com sucesso!")
-
-    # Estado
-    if "planilhas" not in st.session_state:
-        st.session_state.planilhas = {}
-    if nome not in st.session_state.planilhas:
-        st.session_state.planilhas[nome] = df
+        st.session_state.planilhas[novo_nome] = df_importado
+        st.success("[📐] Planilha desenhada com sucesso (sem limpeza automática).")
 
     # Editor
-    st.subheader("[✏️] Editar dados")
-    df = st.session_state.planilhas[nome]
+    st.subheader("[✏️] Desenhar planilha (editor)")
+    df = st.session_state.planilhas[novo_nome]
     df = df.loc[:, ~df.columns.duplicated()].copy()
     df = df.reset_index(drop=True)
 
-    st.session_state.planilhas[nome] = st.data_editor(
+    # Cabeçalho com letras de coluna
+    col_letters = _col_letters(len(df.columns))
+    header = " | ".join(f"{letra}: {col}" for letra, col in zip(col_letters, df.columns))
+    st.markdown(f"<p style='font-size:12px; color:#BBBBBB;'>Colunas: {header}</p>", unsafe_allow_html=True)
+
+    # Editor de dados + nomes de colunas editáveis
+    col_names = st.text_input(
+        "Renomear colunas (separadas por vírgula, na ordem atual):",
+        value=", ".join(df.columns),
+        key=f"col_names_{novo_nome}"
+    )
+    novos_nomes = [c.strip() for c in col_names.split(",")] if col_names.strip() else df.columns
+    if len(novos_nomes) == len(df.columns):
+        df.columns = novos_nomes
+
+    st.session_state.planilhas[novo_nome] = st.data_editor(
         df,
         num_rows="dynamic",
-        key=f"editor_{nome}",
+        key=f"editor_{novo_nome}",
         use_container_width=True
     )
 
-    # Ferramentas simples
-    st.markdown("### [🛠] Ferramentas rápidas")
+    # Limpeza condicionada ao botão + switch IA
+    st.markdown("### [🧹] Limpar planilha")
+    col_l1, col_l2 = st.columns([2, 2])
 
-    col_t1, col_t2, col_t3, col_t4 = st.columns(4)
+    with col_l1:
+        limpar = st.button("🧹 Limpar dados", key=f"btn_limpar_{novo_nome}")
+    with col_l2:
+        usar_ia = st.checkbox(
+            "Com auxílio do PocketDBA",
+            value=False,
+            key=f"ia_limpar_{novo_nome}
+        )
 
-    with col_t1:
-        st.markdown("**➕ Criar coluna**")
-        nome_col = st.text_input("Nome da nova coluna", key=f"nova_col_{nome}")
-        valor_padrao = st.text_input("Valor padrão (opcional)", key=f"nova_col_val_{nome}")
-        if st.button("Criar", key=f"btn_criar_col_{nome}"):
-            df = st.session_state.planilhas[nome]
-            df = criar_coluna(df, nome_col, valor_padrao or None)
-            st.session_state.planilhas[nome] = df
-            st.success(f"Coluna '{nome_col}' criada.")
-
-    with col_t2:
-        st.markdown("**🔁 Substituir valores**")
-        col_sub = st.selectbox("Coluna", df.columns, key=f"sub_col_{nome}")
-        antigo = st.text_input("Valor antigo", key=f"sub_ant_{nome}")
-        novo = st.text_input("Valor novo", key=f"sub_novo_{nome}")
-        if st.button("Substituir", key=f"btn_sub_{nome}"):
-            df = st.session_state.planilhas[nome]
-            df = substituir_valores(df, col_sub, antigo, novo)
-            st.session_state.planilhas[nome] = df
-            st.success("Substituição aplicada.")
-
-    with col_t3:
-        st.markdown("**🧩 Preencher vazios**")
-        col_vaz = st.selectbox("Coluna", df.columns, key=f"vaz_col_{nome}")
-        val_vaz = st.text_input("Valor para vazios", key=f"vaz_val_{nome}")
-        if st.button("Preencher", key=f"btn_vaz_{nome}"):
-            df = st.session_state.planilhas[nome]
-            df = preencher_vazios(df, col_vaz, val_vaz)
-            st.session_state.planilhas[nome] = df
-            st.success("Vazios preenchidos.")
-
-    with col_t4:
-        st.markdown("**⚖ Regra simples**")
-        col_ref = st.selectbox("Coluna de referência", df.columns, key=f"reg_col_{nome}")
-        operador = st.selectbox("Operador", [">", ">=", "<", "<=", "=="], key=f"reg_op_{nome}")
-        limite = st.number_input("Limite", key=f"reg_lim_{nome}")
-        nome_saida = st.text_input("Nome da coluna de saída", key=f"reg_out_{nome}")
-        val_true = st.text_input("Valor se verdadeiro", key=f"reg_true_{nome}")
-        val_false = st.text_input("Valor se falso (opcional)", key=f"reg_false_{nome}")
-        if st.button("Aplicar regra", key=f"btn_reg_{nome}"):
-            df = st.session_state.planilhas[nome]
-            df = regra_condicional_simples(df, col_ref, operador, limite, nome_saida, val_true, val_false or None)
-            st.session_state.planilhas[nome] = df
-            st.success("Regra aplicada.")
-
-    # Caixa de IA abaixo da planilha
-    st.markdown("### [🤖] Assistente IA para a planilha")
-    msg = st.text_area("Peça algo sobre esta planilha (ex.: 'Me dê um resumo.')", key=f"ia_msg_{nome}")
-    if st.button("Me dê um resumo.", key=f"btn_resumo_{nome}"):
-        df_atual = st.session_state.planilhas[nome]
-        resumo = resumo_planilha(df_atual)
-        if "ia_log" not in st.session_state:
-            st.session_state.ia_log = ""
-        st.session_state.ia_log += f"\n\n[Resumo PocketDBA]\n{resumo}"
-        st.success("Resumo gerado. Veja na janela de IA no canto da tela.")
-        st.write(resumo)
+    if limpar:
+        df_atual = st.session_state.planilhas[novo_nome]
+        df_limpo = limpar_planilha(
+            df_atual,
+            usar_ia=usar_ia,
+            ia_resumo_fn=resumo_planilha if usar_ia else None
+        )
+        st.session_state.planilhas[novo_nome] = df_limpo
+        st.success("Planilha limpa. Editor atualizado abaixo.")
+        st.dataframe(df_limpo, use_container_width=True)
 
     # Ações
     st.markdown("### [📦] Ações")
-
-    col_b1, col_b2, col_b3 = st.columns(3)
+    col_b1, col_b2 = st.columns(2)
 
     with col_b1:
-        if st.button(f"🧹 Limpar planilha — {nome}"):
-            df_limpo = limpar_planilha(st.session_state.planilhas[nome])
-            st.session_state.planilhas[nome] = df_limpo
-            st.success("Planilha limpa.")
-
-    with col_b2:
-        if st.button(f"🧮 Calcular total — {nome}"):
-            df_calc = limpar_planilha(st.session_state.planilhas[nome].copy())
-            total = df_calc["Valor"].sum()
-            st.success(f"Total de valores em {nome}: {total:,.2f}")
-
-    with col_b3:
-        df_export = st.session_state.planilhas[nome]
+        df_export = st.session_state.planilhas[novo_nome]
         st.download_button(
             label="[📤] Exportar para Excel",
             data=to_excel(df_export),
-            file_name=f"{nome}.xlsx"
-    )
+            file_name=f"{novo_nome}.xlsx"
+        )
+
+    with col_b2:
+        df_calc = st.session_state.planilhas[novo_nome]
+        if "Valor" in df_calc.columns:
+            total = pd.to_numeric(df_calc["Valor"], errors="coerce").sum()
+            st.success(f"Total de valores em {novo_nome}: {total:,.2f}")
+        else:
+            st.info("Nenhuma coluna 'Valor' encontrada para cálculo.")

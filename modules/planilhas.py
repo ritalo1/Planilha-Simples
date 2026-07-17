@@ -56,21 +56,25 @@ def render_planilhas(df, nome):
             st.success("Planilha importada, mapeada e limpa com sucesso!")
 
     # ============================
-    # EDITOR DE DADOS
-    # ============================
+# EDITOR DE DADOS
+# ============================
 
-    st.subheader("✏️ Editar dados")
-    df = st.session_state.planilhas[nome]
+st.subheader("✏️ Editar dados")
+df = st.session_state.planilhas[nome]
 
-    # Garantir que não há colunas duplicadas antes do editor
-    df = df.loc[:, ~df.columns.duplicated()]
+# Remover duplicatas ANTES do editor
+df = df.loc[:, ~df.columns.duplicated()].copy()
 
-    st.session_state.planilhas[nome] = st.data_editor(
-        df,
-        num_rows="dynamic",
-        key=f"editor_{nome}",
-        use_container_width=True
-    )
+# Resetar índice (evita colunas internas do Streamlit)
+df = df.reset_index(drop=True)
+
+# Editor seguro
+st.session_state.planilhas[nome] = st.data_editor(
+    df,
+    num_rows="dynamic",
+    key=f"editor_{nome}",
+    use_container_width=True
+)
 
     # ============================
     # BOTÕES

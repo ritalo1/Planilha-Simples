@@ -2,6 +2,9 @@ import streamlit as st
 import pandas as pd
 from modules.etl import limpar_planilha
 from modules.utils import to_excel
+from modules.transformacoes import (
+    criar_coluna, substituir_valores, preencher_vazios, regra_condicional_simples
+)
 
 def render_planilhas(df, nome):
     st.markdown(
@@ -9,6 +12,7 @@ def render_planilhas(df, nome):
         unsafe_allow_html=True
     )
 
+    # Importar planilha
     st.subheader("📥 Importar planilha")
     arquivo = st.file_uploader(
         "Selecione um arquivo",
@@ -19,18 +23,15 @@ def render_planilhas(df, nome):
     if arquivo:
         nome_arquivo = arquivo.name.lower()
 
-        # Importação segura
         if nome_arquivo.endswith((".csv", ".tsv")):
             df_importado = pd.read_csv(arquivo)
         else:
             df_importado = pd.read_excel(arquivo)
 
-        # Remove colunas duplicadas
         df_importado = df_importado.loc[:, ~df_importado.columns.duplicated()].copy()
-
         colunas_detectadas = list(df_importado.columns)
 
-        st.info("Mapeie as colunas do arquivo para o padrão do sistema:")
+        st.info("Mapeie as colunas do arquivo para o padrão do PocketDBA:")
 
         col_desc = st.selectbox("Coluna de Descrição", colunas_detectadas, key=f"map_desc_{nome}")
         col_cat = st.selectbox("Coluna de Categoria", colunas_detectadas, key=f"map_cat_{nome}")
@@ -39,7 +40,6 @@ def render_planilhas(df, nome):
 
         if st.button("Confirmar mapeamento e limpar", key=f"map_btn_{nome}"):
 
-            # Renomeação segura
             df_importado = df_importado.rename(columns={
                 col_desc: "Descrição",
                 col_cat: "Categoria",
@@ -47,10 +47,7 @@ def render_planilhas(df, nome):
                 col_data: "Data"
             })
 
-            # Remove duplicatas novamente após renomear
             df_importado = df_importado.loc[:, ~df_importado.columns.duplicated()].copy()
-
-            # ETL
             df_importado = limpar_planilha(df_importado)
 
             st.session_state.planilhas[nome] = df_importado
@@ -58,20 +55,18 @@ def render_planilhas(df, nome):
 
             st.success("Planilha importada, mapeada e limpa com sucesso!")
 
-    # ============================
-    # EDITOR DE DADOS
-    # ============================
-
+    # Editor
     st.subheader("✏️ Editar dados")
+
+    if "planilhas" not in st.session_state:
+        st.session_state.planilhas = {}
+    if nome not in st.session_state.planilhas:
+        st.session_state.planilhas[nome] = df
+
     df = st.session_state.planilhas[nome]
-
-    # Remover duplicatas ANTES do editor
     df = df.loc[:, ~df.columns.duplicated()].copy()
-
-    # Resetar índice (evita colunas internas do Streamlit)
     df = df.reset_index(drop=True)
 
-    # Editor seguro
     st.session_state.planilhas[nome] = st.data_editor(
         df,
         num_rows="dynamic",
@@ -79,9 +74,58 @@ def render_planilhas(df, nome):
         use_container_width=True
     )
 
-    # ============================
-    # BOTÕES
-    # ============================
+    # Ferramentas simples (modo A)
+    st.markdown("### 🛠 Ferramentas rápidas (modo simples)")
+
+    col_t1, col_t2, col_t3, col_t4 = st.columns(4)
+
+    with col_t1:
+        st.markdown("**➕ Criar coluna**")
+        nome_col = st.text_input("Nome da nova coluna", key=f"nova_col_{nome}")
+        valor_padrao = st.text_input("Valor padrão (opcional)", key=f"nova_col_val_{nome}")
+        if st.button("Criar", key=f"btn_criar_col_{nome}"):
+            df = st.session_state.planilhas[nome]
+            df = criar_coluna(df, nome_col, valor_padrao or None)
+            st.session_state.planilhas[nome] = df
+            st.success(f"Coluna '{nome_col}' criada.")
+
+    with col_t2:
+        st.markdown("**🔁 Substituir valores**")
+        col_sub = st.selectbox("Coluna", df.columns, key=f"sub_col_{nome}")
+        antigo = st.text_input("Valor antigo", key=f"sub_ant_{nome}")
+        novo = st.text_input("Valor novo", key=f"sub_novo_{nome}")
+        if st.button("Substituir", key=f"btn_sub_{nome}"):
+            df = st.session_state.planilhas[nome]
+            df = substituir_valores(df, col_sub, antigo, novo)
+            st.session_state.planilhas[nome] = df
+            st.success("Substituição aplicada.")
+
+    with col_t3:
+        st.markdown("**🧩 Preencher vazios**")
+        col_vaz = st.selectbox("Coluna", df.columns, key=f"vaz_col_{nome}")
+        val_vaz = st.text_input("Valor para vazios", key=f"vaz_val_{nome}")
+        if st.button("Preencher", key=f"btn_vaz_{nome}"):
+            df = st.session_state.planilhas[nome]
+            df = preencher_vazios(df, col_vaz, val_vaz)
+            st.session_state.planilhas[nome] = df
+            st.success("Vazios preenchidos.")
+
+    with col_t4:
+        st.markdown("**⚖ Regra simples**")
+        col_ref = st.selectbox("Coluna de referência", df.columns, key=f"reg_col_{nome}")
+        operador = st.selectbox("Operador", [">", ">=", "<", "<=", "=="], key=f"reg_op_{nome}")
+        limite = st.number_input("Limite", key=f"reg_lim_{nome}")
+        nome_saida = st.text_input("Nome da coluna de saída", key=f"reg_out_{nome}")
+        val_true = st.text_input("Valor se verdadeiro", key=f"reg_true_{nome}")
+        val_false = st.text_input("Valor se falso (opcional)", key=f"reg_false_{nome}")
+        if st.button("Aplicar regra", key=f"btn_reg_{nome}"):
+            df = st.session_state.planilhas[nome]
+            df = regra_condicional_simples(df, col_ref, operador, limite, nome_saida, val_true, val_false or None)
+            st.session_state.planilhas[nome] = df
+            st.success("Regra aplicada.")
+
+    # Botões finais
+    st.markdown("### 📦 Ações")
 
     col_b1, col_b2, col_b3 = st.columns(3)
 
@@ -103,4 +147,4 @@ def render_planilhas(df, nome):
             label="📤 Exportar para Excel",
             data=to_excel(df_export),
             file_name=f"{nome}.xlsx"
-            )
+        )

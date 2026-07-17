@@ -1,69 +1,70 @@
 import pandas as pd
+import numpy as np
 import streamlit as st
 
-CATEGORIAS = [
-    "Alimentação", "Transporte", "Moradia",
-    "Saúde", "Lazer", "Educação", "Outros"
-]
-
 def limpar_planilha(df, usar_ia=False, ia_resumo_fn=None, instrucoes_ia=""):
-    df = df.copy()
+    # Cria uma cópia independente para segurança
+    df_clean = df.copy()
 
-    # Padroniza nomes das colunas
-    df.columns = df.columns.str.strip().str.title()
+    # ==========================================
+    # 1. LIMPEZA ESTRUTURAL BÁSICA
+    # ==========================================
+    # Remove colunas e linhas que sejam 100% vazias (lixo de Excel)
+    df_clean = df_clean.dropna(axis=1, how='all')
+    df_clean = df_clean.dropna(axis=0, how='all')
 
-    # Garante colunas esperadas
-    colunas_esperadas = ["Descrição", "Categoria", "Data", "Valor", "Observações"]
-    for col in colunas_esperadas:
-        if col not in df.columns:
-            df[col] = None
+    # Padroniza o nome das colunas removendo espaços ocultos nas pontas
+    df_clean.columns = df_clean.columns.astype(str).str.strip().str.title()
 
-    # Tratamento célula por célula
-    for linha in df.index:
-        for coluna in df.columns:
-            valor = df.at[linha, coluna]
+    # ==========================================
+    # 2. INFERÊNCIA INTELIGENTE DE TIPOS (Vetorizada)
+    # ==========================================
+    for col in df_clean.columns:
+        # Pula colunas que já vieram perfeitamente tipadas como números
+        if pd.api.types.is_numeric_dtype(df_clean[col]):
+            continue
+            
+        # Garante que a coluna é tratada como string para inspecionar a sujeira
+        col_str = df_clean[col].astype(str)
 
-            if coluna == "Descrição":
-                df.at[linha, coluna] = "" if valor is None else str(valor).strip()
+        # --- A. DETECÇÃO DE MOEDA / NÚMEROS ---
+        # Se achar 'R$', '$' no conteúdo, ou palavras-chave financeiras no título
+        if col_str.str.contains(r'(?:R\$|\$)', regex=True, na=False).any() or \
+           any(termo in col.upper() for termo in ["VALOR", "PREÇO", "PRECO", "TOTAL", "CUSTO", "SALDO"]):
+            
+            # Limpa tudo: tira R$, tira letras, tira ponto de milhar e arruma vírgula decimal
+            limpo_num = col_str.str.replace(r'[a-zA-ZR\$\s]', '', regex=True) \
+                               .str.replace('.', '', regex=False) \
+                               .str.replace(',', '.', regex=False)
+            
+            convertido = pd.to_numeric(limpo_num, errors='coerce')
+            
+            # Se a conversão salvou pelo menos 30% dos dados da coluna, oficializa como numérica
+            if convertido.notna().mean() > 0.3:
+                df_clean[col] = convertido
+                continue
 
-            elif coluna == "Categoria":
-                texto = str(valor).strip() if valor else "Outros"
-                df.at[linha, coluna] = texto if texto in CATEGORIAS else "Outros"
+        # --- B. DETECÇÃO DE DATAS ---
+        if any(termo in col.upper() for termo in ["DATA", "VENCIMENTO", "EMISSÃO", "EMISSAO", "PERÍODO"]):
+            convertido_data = pd.to_datetime(df_clean[col], errors='coerce', dayfirst=True)
+            if convertido_data.notna().mean() > 0.3:
+                df_clean[col] = convertido_data
+                continue
 
-            elif coluna == "Data":
-                if isinstance(valor, pd.Timestamp):
-                    continue
-                if isinstance(valor, str) and valor.strip():
-                    try:
-                        df.at[linha, coluna] = pd.to_datetime(valor, errors="raise")
-                    except:
-                        df.at[linha, coluna] = valor
-                else:
-                    df.at[linha, coluna] = None
+        # --- C. LIMPEZA DE TEXTO (O que sobrou) ---
+        if pd.api.types.is_string_dtype(df_clean[col]) or pd.api.types.is_object_dtype(df_clean[col]):
+            # Remove espaços duplos, trailing spaces e normaliza 'nan' fantasma
+            df_clean[col] = df_clean[col].apply(
+                lambda x: str(x).strip() if pd.notna(x) and str(x).strip().lower() != 'nan' else np.nan
+            )
 
-            elif coluna == "Valor":
-                if isinstance(valor, (int, float)):
-                    continue
-                if isinstance(valor, str) and valor.strip():
-                    raw = valor.replace("R$", "").replace(" ", "").replace(".", "").replace(",", ".")
-                    try:
-                        df.at[linha, coluna] = float(raw)
-                    except:
-                        df.at[linha, coluna] = None
-                else:
-                    df.at[linha, coluna] = None
-
-            elif coluna == "Observações":
-                df.at[linha, coluna] = "" if valor is None else str(valor).strip()
-
-    # Organiza por categoria
-    df = df.sort_values(by="Categoria")
-
-    # Processamento com IA integrado ao PocketDBA
+    # ==========================================
+    # 3. GATILHO DA IA (PocketDBA)
+    # ==========================================
     if usar_ia and ia_resumo_fn is not None:
-        # CORREÇÃO AQUI: Passamos as instruções direitinho para a função do ia_sql
-        resumo = ia_resumo_fn(df, instrucoes_ia=instrucoes_ia)
+        # Apenas dispara a IA. O print visual é tratado lá no planilhas.py
+        resumo = ia_resumo_fn(df_clean, instrucoes_ia=instrucoes_ia)
     else:
-        st.success("🧹 Planilha limpa e organizada por categoria.")
+        st.success("🧹 Base de dados higienizada com sucesso pelo ETL Dinâmico.")
 
-    return df[colunas_esperadas]
+    return df_clean

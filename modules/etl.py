@@ -6,12 +6,8 @@ CATEGORIAS = [
     "Saúde", "Lazer", "Educação", "Outros"
 ]
 
-@st.cache_data(show_spinner=False)
 def limpar_planilha(df):
-    linhas_antes = len(df)
-
-    # Remove colunas Unnamed
-    df = df.loc[:, ~df.columns.str.contains("^Unnamed", case=False, na=False)].copy()
+    df = df.copy()
 
     # Padroniza nomes das colunas
     df.columns = df.columns.str.strip().str.title()
@@ -22,34 +18,21 @@ def limpar_planilha(df):
         if col not in df.columns:
             df[col] = None
 
-    # Tratamento célula por célula (estilo Excel)
+    # Tratamento célula por célula
     for linha in df.index:
         for coluna in df.columns:
-
             valor = df.at[linha, coluna]
 
-            # ============================
             # DESCRIÇÃO
-            # ============================
             if coluna == "Descrição":
-                if valor is None:
-                    df.at[linha, coluna] = ""
-                else:
-                    df.at[linha, coluna] = str(valor).strip()
+                df.at[linha, coluna] = "" if valor is None else str(valor).strip()
 
-            # ============================
             # CATEGORIA
-            # ============================
             elif coluna == "Categoria":
-                if valor is None or str(valor).strip() == "":
-                    df.at[linha, coluna] = "Outros"
-                else:
-                    texto = str(valor).strip()
-                    df.at[linha, coluna] = texto if texto in CATEGORIAS else "Outros"
+                texto = str(valor).strip() if valor else "Outros"
+                df.at[linha, coluna] = texto if texto in CATEGORIAS else "Outros"
 
-            # ============================
             # DATA
-            # ============================
             elif coluna == "Data":
                 if isinstance(valor, pd.Timestamp):
                     continue
@@ -57,13 +40,11 @@ def limpar_planilha(df):
                     try:
                         df.at[linha, coluna] = pd.to_datetime(valor, errors="raise")
                     except:
-                        df.at[linha, coluna] = valor  # preserva texto
+                        df.at[linha, coluna] = valor
                 else:
                     df.at[linha, coluna] = None
 
-            # ============================
             # VALOR
-            # ============================
             elif coluna == "Valor":
                 if isinstance(valor, (int, float)):
                     continue
@@ -72,22 +53,17 @@ def limpar_planilha(df):
                     try:
                         df.at[linha, coluna] = float(raw)
                     except:
-                        df.at[linha, coluna] = 0.1  # qualquer caractere vira 0.1
+                        df.at[linha, coluna] = 0.1
                 else:
                     df.at[linha, coluna] = 0.1
 
-            # ============================
             # OBSERVAÇÕES
-            # ============================
             elif coluna == "Observações":
-                if valor is None:
-                    df.at[linha, coluna] = ""
-                else:
-                    df.at[linha, coluna] = str(valor).strip()
+                df.at[linha, coluna] = "" if valor is None else str(valor).strip()
 
-    st.success(
-        f"🧹 ETL concluído: {len(df)} linhas (antes: {linhas_antes}). "
-        f"Tratamento célula por célula concluído."
-    )
+    # Organiza por categoria
+    df = df.sort_values(by="Categoria")
 
-    return df[colunas_esperadas]
+    st.success("🧹 Planilha limpa e organizada por categoria.")
+
+    return df[colunas_esperadas] 

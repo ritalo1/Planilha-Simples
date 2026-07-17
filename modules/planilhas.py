@@ -51,6 +51,70 @@ def render_planilhas(df, nome):
         st.session_state.planilhas[nome] = df_importado
         st.success("[📐] Planilha importada com sucesso.")
 
+
+    # --- INTERFACE DE LIMPEZA COM INSTRUÇÃO PARA A IA ---
+    st.markdown("### [🧹] Limpar planilha")
+    
+    col_btn, col_ia = st.columns([1, 2])
+
+    with col_btn:
+        st.markdown("<div style='padding-top: 5px;'></div>", unsafe_allow_html=True)
+        limpar_simples = st.button("🧹 Limpar dados simples", key=f"btn_limpar_{nome}")
+        
+    with col_ia:
+        usar_ia = st.checkbox(
+            "Com auxílio do PocketDBA",
+            value=False,
+            key=f"ia_limpar_{nome}"
+        )
+
+    # Se marcar a caixinha da IA, abre o formulário compacto de envio rápido
+    if usar_ia:
+        # Envelopamos em um form para o botão de envio funcionar integrado à caixa de texto
+        with st.form(key=f"form_ia_{nome}", border=True):
+            prompt_usuario = st.text_area(
+                "🧠 Instruções para o PocketDBA:",
+                placeholder="Ex: Formate a coluna 'Valor' para float, remova CPFs duplicados...",
+                key=f"prompt_ia_{nome}",
+                help="Diga exatamente o que você quer que a inteligência faça."
+            )
+            
+            # Criamos colunas para empurrar o botão de envio para o canto inferior direito
+            col_space, col_submit = st.columns([4, 1])
+            with col_submit:
+                # O botão com a setinha para a direita (➡️) que simula o "Enviar"
+                limpar_com_ia = st.form_submit_button("➡️ Enviar", use_container_width=True)
+    else:
+        limpar_com_ia = False
+
+    # Lógica de disparo do ETL (Se clicou no simples ou no enviar do form da IA)
+    if limpar_simples or limpar_com_ia:
+        df_para_limpar = st.session_state.planilhas[nome]
+        
+        # Avisa o usuário no celular que o processo começou
+        with st.spinner("PocketDBA processando o pipeline de ETL..."):
+            df_limpo = limpar_planilha(
+                df_para_limpar,
+                usar_ia=usar_ia,
+                ia_resumo_fn=resumo_planilha if usar_ia else None,
+                instrucoes_ia=prompt_usuario if usar_ia else ""
+            )
+        
+        st.session_state.planilhas[nome] = df_limpo
+        st.success("Planilha processada com sucesso!")
+        
+        # --- LOGS OCULTOS (Sua sugestão de UX) ---
+        # Se foi usado IA, guardamos o relatório detalhado escondido para não poluir a tela do celular
+        if usar_ia:
+            with st.expander("📋 Ver detalhes técnicos e logs do PocketDBA"):
+                st.markdown("**Instruções aplicadas no pipeline:**")
+                st.code(prompt_usuario if prompt_usuario else "Limpeza padrão de IA.")
+                st.markdown("**Relatório de Auditoria:**")
+                # Aqui você chama a função de resumo que gera os insights do seu arquivo limpo
+                st.write(resumo_planilha(df_limpo))
+        
+        # Dá o tapa final para recarregar o visual do app com os dados novos
+        st.rerun() 
     # Puxa os dados para exibição
     df_atual = st.session_state.planilhas[nome]
     df_atual = df_atual.loc[:, ~df_atual.columns.duplicated()].copy()

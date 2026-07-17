@@ -17,7 +17,20 @@ def render_header():
 
 def render_sidebar():
     st.sidebar.markdown("### [⚙️] Navegação")
-
+    
+    try:
+        pagina = st.sidebar.segmented_control(
+            "Escolha a página:",
+            ["[🏠] Início", "[📈] Dashboard", "[💻] Console SQL", "[🧾] Planilhas"],
+            default="[🏠] Início",
+            label_visibility="collapsed"
+        )
+    except AttributeError:
+        pagina = st.sidebar.radio(
+            "Escolha a página:",
+            ["[🏠] Início", "[📈] Dashboard", "[💻] Console SQL", "[🧾] Planilhas"]
+        )
+        
     # Tenta usar o componente moderno; se a versão do Streamlit for antiga, usa o rádio horizontal
     try:
         pagina = st.sidebar.segmented_control(

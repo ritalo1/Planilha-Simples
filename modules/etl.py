@@ -7,12 +7,6 @@ CATEGORIAS = [
 ]
 
 def limpar_planilha(df, usar_ia=False, ia_resumo_fn=None, instrucoes_ia=""):
-    if usar_ia and instrucoes_ia:
-        # Você junta o prompt padrão do seu ETL com o pedido do usuário:
-        prompt_completo = f"Instruções extras do usuário para aplicar no arquivo: {instrucoes_ia}"
-        # ... envia o prompt_completo para a IA ...
-
-def limpar_planilha(df, usar_ia=False, ia_resumo_fn=None):
     df = df.copy()
 
     # Padroniza nomes das colunas
@@ -24,7 +18,7 @@ def limpar_planilha(df, usar_ia=False, ia_resumo_fn=None):
         if col not in df.columns:
             df[col] = None
 
-    # Tratamento célula por célula (sem 0.1)
+    # Tratamento célula por célula
     for linha in df.index:
         for coluna in df.columns:
             valor = df.at[linha, coluna]
@@ -65,9 +59,15 @@ def limpar_planilha(df, usar_ia=False, ia_resumo_fn=None):
     # Organiza por categoria
     df = df.sort_values(by="Categoria")
 
+    # Processamento com IA integrado ao PocketDBA
     if usar_ia and ia_resumo_fn is not None:
+        # Se o usuário digitou regras específicas, nós podemos passar ou processar junto aqui
+        if instrucoes_ia:
+            # Aqui criamos o contexto caso sua ia_resumo_fn mude no futuro para aceitar prompts dinâmicos
+            prompt_completo = f"Instruções do usuário: {instrucoes_ia}"
+            
         resumo = ia_resumo_fn(df)
-        st.info(f"[🤖] PocketDBA auxiliou na limpeza:\n\n{resumo}")
+        # O sucesso agora vai aparecer no expander lá na interface que estruturamos
     else:
         st.success("🧹 Planilha limpa e organizada por categoria.")
 

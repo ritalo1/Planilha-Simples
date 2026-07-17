@@ -22,106 +22,94 @@ def render_planilhas(df, nome):
         unsafe_allow_html=True
     )
     st.markdown(
-        "<p style='color:#BBBBBB; font-size:14px;'>Edite, desenhe e limpe suas planilhas com auxílio opcional do PocketDBA.</p>",
+        "<p style='color:#BBBBBB; font-size:14px;'>Visualize e gerencie a estrutura da sua planilha mapeada automaticamente.</p>",
         unsafe_allow_html=True
     )
 
-    # Nome da planilha editável
-    novo_nome = st.text_input("Nome da planilha:", value=nome, key=f"nome_planilha_{nome}")
+    # Estado global das planilhas
+    if "planilhas" not in st.session_state:
+        st.session_state.planilhas = {}
+    if nome not in st.session_state.planilhas:
+        st.session_state.planilhas[nome] = df
 
-    # Importar
+    # Importador de Arquivos Direto
     st.subheader("[📥] Importar planilha")
     arquivo = st.file_uploader(
-        "Selecione um arquivo",
+        "Selecione um arquivo para mapeamento",
         type=["xlsx", "xlsm", "ods", "csv", "tsv"],
         key=f"upload_{nome}"
     )
 
-    if "planilhas" not in st.session_state:
-        st.session_state.planilhas = {}
-    if novo_nome not in st.session_state.planilhas:
-        st.session_state.planilhas[novo_nome] = df
-
     if arquivo:
         nome_arquivo = arquivo.name.lower()
-
         if nome_arquivo.endswith((".csv", ".tsv")):
             df_importado = pd.read_csv(arquivo)
         else:
             df_importado = pd.read_excel(arquivo)
 
         df_importado = df_importado.loc[:, ~df_importado.columns.duplicated()].copy()
-        st.session_state.planilhas[novo_nome] = df_importado
-        st.success("[📐] Planilha desenhada com sucesso (sem limpeza automática).")
+        st.session_state.planilhas[nome] = df_importado
+        st.success("[📐] Planilha importada e mapeada com sucesso.")
 
-    # Editor
-    st.subheader("[✏️] Desenhar planilha (editor)")
-    df = st.session_state.planilhas[novo_nome]
-    df = df.loc[:, ~df.columns.duplicated()].copy()
-    df = df.reset_index(drop=True)
+    # Puxa os dados para exibição
+    df_atual = st.session_state.planilhas[nome]
+    df_atual = df_atual.loc[:, ~df_atual.columns.duplicated()].copy()
+    df_atual = df_atual.reset_index(drop=True)
 
-    # Cabeçalho com letras de coluna
-    col_letters = _col_letters(len(df.columns))
-    header = " | ".join(f"{letra}: {col}" for letra, col in zip(col_letters, df.columns))
-    st.markdown(f"<p style='font-size:12px; color:#BBBBBB;'>Colunas: {header}</p>", unsafe_allow_html=True)
+    # Exibe o mapeamento automático de letras
+    col_letters = _col_letters(len(df_atual.columns))
+    header = " | ".join(f"{letra}: {col}" for letra, col in zip(col_letters, df_atual.columns))
+    st.markdown(f"<p style='font-size:12px; color:#BBBBBB;'>Mapeamento de Colunas: {header}</p>", unsafe_allow_html=True)
 
-    # Editor de dados + nomes de colunas editáveis
-    col_names = st.text_input(
-        "Renomear colunas (separadas por vírgula, na ordem atual):",
-        value=", ".join(df.columns),
-        key=f"col_names_{novo_nome}"
-    )
-    novos_nomes = [c.strip() for c in col_names.split(",")] if col_names.strip() else df.columns
-    if len(novos_nomes) == len(df.columns):
-        df.columns = novos_nomes
+    # Exibição dos valores normais na tela
+    st.subheader("[📊] Visualização dos Dados")
+    st.dataframe(df_atual, use_container_width=True)
 
-    st.session_state.planilhas[novo_nome] = st.data_editor(
-        df,
-        num_rows="dynamic",
-        key=f"editor_{novo_nome}",
-        use_container_width=True
-    )
-
-    # Limpeza condicionada ao botão + switch IA
+    # --- BLOCO DE LIMPEZA LADO A LADO ---
     st.markdown("### [🧹] Limpar planilha")
-    col_l1, col_l2 = st.columns([2, 2])
+    
+    # Criamos colunas bem ajustadas para o mobile: 
+    # A primeira coluna pega o botão, a segunda fica colada com o Checkbox da IA
+    col_btn, col_ia = st.columns([1, 2])
 
-    with col_l1:
-        limpar = st.button("🧹 Limpar dados", key=f"btn_limpar_{novo_nome}")
-    with col_l2:
+    with col_btn:
+        limpar = st.button("🧹 Limpar dados", key=f"btn_limpar_{nome}")
+        
+    with col_ia:
+        # Esse markdown serve apenas para empurrar o checkbox um pouquinho para baixo,
+        # fazendo ele ficar perfeitamente alinhado no meio do botão ao lado.
+        st.markdown("<div style='padding-top: 5px;'></div>", unsafe_allow_html=True)
         usar_ia = st.checkbox(
             "Com auxílio do PocketDBA",
             value=False,
-            key=f"ia_limpar_{novo_nome}"
+            key=f"ia_limpar_{nome}"
         )
 
     if limpar:
-        df_atual = st.session_state.planilhas[novo_nome]
         df_limpo = limpar_planilha(
             df_atual,
             usar_ia=usar_ia,
             ia_resumo_fn=resumo_planilha if usar_ia else None
         )
-        st.session_state.planilhas[novo_nome] = df_limpo
-        st.success("Planilha limpa. Editor atualizado abaixo.")
-        st.dataframe(df_limpo, use_container_width=True)
+        st.session_state.planilhas[nome] = df_limpo
+        st.success("Planilha limpa com sucesso!")
+        st.rerun()
 
-    # Ações
+    # Bloco simples de ações
     st.markdown("### [📦] Ações")
     col_b1, col_b2 = st.columns(2)
 
     with col_b1:
-        df_export = st.session_state.planilhas[novo_nome]
         st.download_button(
             label="[📤] Exportar para Excel",
-            data=to_excel(df_export),
-            file_name=f"{novo_nome}.xlsx"
+            data=to_excel(df_atual),
+            file_name=f"{nome}.xlsx",
+            key=f"download_{nome}"
         )
 
     with col_b2:
-        df_calc = st.session_state.planilhas[novo_nome]
-        if "Valor" in df_calc.columns:
-            total = pd.to_numeric(df_calc["Valor"], errors="coerce").sum()
-            st.success(f"Total de valores em {novo_nome}: {total:,.2f}")
+        if "Valor" in df_atual.columns:
+            total = pd.to_numeric(df_atual["Valor"], errors="coerce").sum()
+            st.success(f"Total de valores em {nome}: {total:,.2f}")
         else:
-            st.info("Nenhuma coluna 'Valor' encontrada para cálculo.")
+            st.info("Nenhuma coluna 'Valor' encontrada para cálculo rápido.")

@@ -61,13 +61,8 @@ def limpar_planilha(df, usar_ia=False, ia_resumo_fn=None, instrucoes_ia=""):
 
     # Processamento com IA integrado ao PocketDBA
     if usar_ia and ia_resumo_fn is not None:
-        # Se o usuário digitou regras específicas, nós podemos passar ou processar junto aqui
-        if instrucoes_ia:
-            # Aqui criamos o contexto caso sua ia_resumo_fn mude no futuro para aceitar prompts dinâmicos
-            prompt_completo = f"Instruções do usuário: {instrucoes_ia}"
-            
-        resumo = ia_resumo_fn(df)
-        # O sucesso agora vai aparecer no expander lá na interface que estruturamos
+        # CORREÇÃO AQUI: Passamos as instruções direitinho para a função do ia_sql
+        resumo = ia_resumo_fn(df, instrucoes_ia=instrucoes_ia)
     else:
         st.success("🧹 Planilha limpa e organizada por categoria.")
 

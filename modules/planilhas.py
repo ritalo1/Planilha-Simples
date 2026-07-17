@@ -39,7 +39,7 @@ def render_planilhas(df, nome):
     arquivo = st.file_uploader(
         "Selecione um arquivo para mapeamento",
         type=["xlsx", "xlsm", "ods", "csv", "tsv"],
-        key=f"upload_{nome}"
+        key=f"upload_arquivo_input_{nome}"
     )
 
     if arquivo:
@@ -76,12 +76,12 @@ def render_planilhas(df, nome):
     col_loc, col_sub, col_go = st.columns([2, 2, 1])
     
     with col_loc:
-        termo_busca = st.text_input("Localizar:", placeholder="Texto ou número...", key=f"loc_{nome}")
+        termo_busca = st.text_input("Localizar:", placeholder="Texto ou número...", key=f"txt_localizar_alvo_{nome}")
     with col_sub:
-        termo_subst = st.text_input("Substituir por:", placeholder="Novo valor...", key=f"sub_{nome}")
+        termo_subst = st.text_input("Substituir por:", placeholder="Novo valor...", key=f"txt_substituir_novo_{nome}")
     with col_go:
         st.markdown("<div style='padding-top: 24px;'></div>", unsafe_allow_html=True)
-        if st.button("🔄 Aplicar", key=f"btn_sub_{nome}", use_container_width=True):
+        if st.button("🔄 Aplicar", key=f"btn_manual_sub_trigger_{nome}", use_container_width=True):
             if termo_busca:
                 df_atual = df_atual.replace(termo_busca, termo_subst)
                 st.session_state.planilhas[nome] = df_atual
@@ -97,13 +97,13 @@ def render_planilhas(df, nome):
 
     with col_btn:
         st.markdown("<div style='padding-top: 5px;'></div>", unsafe_allow_html=True)
-        limpar_simples = st.button("🧹 Limpar dados simples", key=f"btn_limpar_{nome}")
+        limpar_simples = st.button("🧹 Limpar dados simples", key=f"btn_limpar_simples_click_{nome}")
         
     with col_ia:
         usar_ia = st.checkbox(
             "Com auxílio do PocketDBA",
             value=False,
-            key=f"ia_limpar_{nome}"
+            key=f"chk_usar_ia_ativador_{nome}"
         )
 
     # Se a IA estiver ativa, abre o form compacto de envio rápido com a setinha
@@ -111,11 +111,11 @@ def render_planilhas(df, nome):
     limpar_com_ia = False
     
     if usar_ia:
-        with st.form(key=f"form_ia_{nome}", border=True):
+        with st.form(key=f"form_ia_limpeza_escopo_{nome}", border=True):
             prompt_usuario = st.text_area(
                 "🧠 Instruções para o PocketDBA:",
                 placeholder="Ex: Formate a coluna 'Valor' para float, remova CPFs duplicados...",
-                key=f"prompt_ia_{nome}",
+                key=f"txt_prompt_ia_comando_{nome}",
                 help="Diga exatamente o que você quer que a inteligência faça na limpeza."
             )
             
@@ -157,7 +157,7 @@ def render_planilhas(df, nome):
             label="[📤] Exportar para Excel",
             data=to_excel(st.session_state.planilhas[nome]),
             file_name=f"{nome}.xlsx",
-            key=f"download_{nome}"
+            key=f"btn_download_final_excel_{nome}"
         )
 
     with col_b2:

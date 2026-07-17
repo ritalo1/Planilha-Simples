@@ -10,7 +10,7 @@ if API_KEY is None:
 client = genai.Client(api_key=API_KEY)
 
 # Definindo o modelo estável e moderno para a API gratuita
-MODEL_NAME = 'gemini-2.5-flash'
+MODEL_NAME = 'gemini-3.5-flash'
 
 
 def corrigir_sql(query):

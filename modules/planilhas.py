@@ -4,7 +4,10 @@ from modules.etl import limpar_planilha
 from modules.utils import to_excel
 
 def render_planilhas(df, nome):
-    st.markdown(f"<h3 style='color:#4CAF50;'>🧾 Planilha — {nome}</h3>", unsafe_allow_html=True)
+    st.markdown(
+        f"<h3 style='color:#4CAF50;'>🧾 Planilha — {nome}</h3>",
+        unsafe_allow_html=True
+    )
 
     st.subheader("📥 Importar planilha")
     arquivo = st.file_uploader(
@@ -23,7 +26,7 @@ def render_planilhas(df, nome):
             df_importado = pd.read_excel(arquivo)
 
         # Remove colunas duplicadas
-        df_importado = df_importado.loc[:, ~df_importado.columns.duplicated()]
+        df_importado = df_importado.loc[:, ~df_importado.columns.duplicated()].copy()
 
         colunas_detectadas = list(df_importado.columns)
 
@@ -45,7 +48,7 @@ def render_planilhas(df, nome):
             })
 
             # Remove duplicatas novamente após renomear
-            df_importado = df_importado.loc[:, ~df_importado.columns.duplicated()]
+            df_importado = df_importado.loc[:, ~df_importado.columns.duplicated()].copy()
 
             # ETL
             df_importado = limpar_planilha(df_importado)
@@ -56,25 +59,25 @@ def render_planilhas(df, nome):
             st.success("Planilha importada, mapeada e limpa com sucesso!")
 
     # ============================
-# EDITOR DE DADOS
-# ============================
+    # EDITOR DE DADOS
+    # ============================
 
-st.subheader("✏️ Editar dados")
-df = st.session_state.planilhas[nome]
+    st.subheader("✏️ Editar dados")
+    df = st.session_state.planilhas[nome]
 
-# Remover duplicatas ANTES do editor
-df = df.loc[:, ~df.columns.duplicated()].copy()
+    # Remover duplicatas ANTES do editor
+    df = df.loc[:, ~df.columns.duplicated()].copy()
 
-# Resetar índice (evita colunas internas do Streamlit)
-df = df.reset_index(drop=True)
+    # Resetar índice (evita colunas internas do Streamlit)
+    df = df.reset_index(drop=True)
 
-# Editor seguro
-st.session_state.planilhas[nome] = st.data_editor(
-    df,
-    num_rows="dynamic",
-    key=f"editor_{nome}",
-    use_container_width=True
-)
+    # Editor seguro
+    st.session_state.planilhas[nome] = st.data_editor(
+        df,
+        num_rows="dynamic",
+        key=f"editor_{nome}",
+        use_container_width=True
+    )
 
     # ============================
     # BOTÕES
@@ -100,4 +103,4 @@ st.session_state.planilhas[nome] = st.data_editor(
             label="📤 Exportar para Excel",
             data=to_excel(df_export),
             file_name=f"{nome}.xlsx"
-                )
+            )

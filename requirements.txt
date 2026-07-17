@@ -1,8 +1,6 @@
 streamlit
 pandas
-altair
-openpyxl
-xlsxwriter
-python-dateutil
 duckdb
+altair
+xlsxwriter
 google-generativeai

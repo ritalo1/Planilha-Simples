@@ -1,40 +1,27 @@
 import streamlit as st
-import pandas as pd
-import altair as alt
-import duckdb
-from io import BytesIO
+from modules.interface import render_header, render_sidebar
+from modules.dashboard import render_dashboard
+from modules.planilhas import render_planilhas
+from modules.console_sql import render_console_sql
+from modules.utils import aplicar_filtros
 
-# ============================
-# CONFIGURAÇÃO GLOBAL
-# ============================
+render_header()
+pagina = render_sidebar()
 
-st.set_page_config(
-    page_title="Sistema de Gastos PRO",
-    page_icon="💸",
-    layout="wide"
-)
+abas = st.tabs(list(st.session_state.planilhas.keys()))
 
-# ============================
-# CONSTANTES E MODELOS
-# ============================
+for nome, aba in zip(st.session_state.planilhas.keys(), abas):
+    with aba:
+        df = st.session_state.planilhas[nome]
 
-CATEGORIAS = [
-    "Alimentação",
-    "Transporte",
-    "Moradia",
-    "Saúde",
-    "Lazer",
-    "Educação",
-    "Outros"
-]
+        if pagina == "Dashboard":
+            st.write("Chamar dashboard aqui")
 
-MODELO = pd.DataFrame({
-    "Descrição": pd.Series(dtype="str"),
-    "Categoria": pd.Series(dtype="str"),
-    "Data": pd.Series(dtype="datetime64[ns]"),
-    "Valor": pd.Series(dtype="float"),
-    "Observações": pd.Series(dtype="str")
-})
+        elif pagina == "Planilhas":
+            render_planilhas(df, nome)
+
+        elif pagina == "Console SQL":
+            render_console_sql(df, nome)})
 
 if "planilhas" not in st.session_state:
     st.session_state.planilhas = {"Janeiro": MODELO.copy()}

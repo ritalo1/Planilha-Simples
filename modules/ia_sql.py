@@ -7,7 +7,8 @@ if API_KEY is None:
 
 genai.configure(api_key=API_KEY)
 
-MODEL = genai.GenerativeModel("gemini-1.5-flash")
+# MODELO CORRETO PARA STREAMLIT CLOUD (v1beta)
+MODEL = genai.GenerativeModel("models/gemini-1.5-flash")
 
 def corrigir_sql(query):
     prompt = f"""
@@ -17,7 +18,7 @@ Corrija o SQL abaixo e retorne APENAS o código SQL corrigido.
 SQL:
 {query}
 """
-    resposta = MODEL.generate_content(prompt)
+    resposta = MODEL.generate_text(prompt)
     return resposta.text.strip()
 
 def chat_dba(mensagem, historico):
@@ -31,11 +32,10 @@ Histórico:
 Usuário:
 {mensagem}
 """
-    resposta = MODEL.generate_content(prompt)
+    resposta = MODEL.generate_text(prompt)
     return resposta.text.strip()
 
 def resumo_planilha(df):
-    # CSV é 100% seguro no Streamlit Cloud
     amostra = df.head(50).to_csv(index=False)
 
     prompt = f"""
@@ -47,10 +47,10 @@ Explique de forma simples e breve o que essa planilha mostra:
 - possíveis inconsistências
 - qualquer insight útil
 
-Não use termos técnicos. Não use SQL, mas resuma o que voce entendeu. Caso não tenha entendido algo, foque em outros detalhes e entregue o relatório.
+Não use termos técnicos. Não use SQL, mas resuma o que você entendeu. Caso não tenha entendido algo, foque e depure outros detalhes e explique brevemente sobre o que está ambíguo. Rode um relatório simples e fácil de entender, para o usuário conseguir corrigir a ambiguidade.
 
 Planilha (amostra em CSV):
 {amostra}
 """
-    resposta = MODEL.generate_content(prompt)
+    resposta = MODEL.generate_text(prompt)
     return resposta.text.strip()

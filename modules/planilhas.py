@@ -80,21 +80,21 @@ def render_planilhas(df, nome):
     # 3. LOCALIZAR E SUBSTITUIR (MANUAL EM LOTE)
     # ==========================================
     st.markdown("### [🔍] Localizar e Substituir")
-    col_loc, col_sub, col_go = st.columns([2, 2, 1])
-    
-    with col_loc:
-        termo_busca = st.text_input("Localizar:", placeholder="Texto ou número...", key=f"txt_localizar_alvo_{nome}")
-    with col_sub:
-        termo_subst = st.text_input("Substituir por:", placeholder="Novo valor...", key=f"txt_substituir_novo_{nome}")
-    with col_go:
-        st.markdown("<div style='padding-top: 24px;'></div>", unsafe_allow_html=True)
-        if st.button("🔄 Aplicar", key=f"btn_manual_sub_trigger_{nome}", use_container_width=True):
-            if termo_busca:
-                df_atual = df_atual.replace(termo_busca, termo_subst)
-                st.session_state.planilhas[nome] = df_atual
-                st.success(f"Substituído '{termo_busca}' por '{termo_subst}'!")
-                st.rerun()
-
+    with st.container(border=True):
+        col_loc, col_sub, col_go = st.columns([2, 2, 1])
+        
+        with col_loc:
+            termo_busca = st.text_input("Localizar:", placeholder="Texto ou número...", key=f"txt_localizar_alvo_{nome}")
+        with col_sub:
+            termo_subst = st.text_input("Substituir por:", placeholder="Novo valor...", key=f"txt_substituir_novo_{nome}")
+        with col_go:
+            st.markdown("<div style='padding-top: 28px;'></div>", unsafe_allow_html=True)
+            if st.button("🔄 Aplicar", key=f"btn_manual_sub_trigger_{nome}", use_container_width=True):
+                if termo_busca:
+                    df_atual = df_atual.replace(termo_busca, termo_subst)
+                    st.session_state.planilhas[nome] = df_atual
+                    st.success(f"Substituído '{termo_busca}' por '{termo_subst}'!")
+                    st.rerun()
     # ==========================================
     # 4. PIPELINE DE LIMPEZA (ETL + IA)
     # ==========================================
@@ -170,20 +170,23 @@ def render_planilhas(df, nome):
     # 5. BLOCO DE AÇÕES FINAIS
     # ==========================================
     st.markdown("### [📦] Ações")
-    col_b1, col_b2 = st.columns(2)
+    with st.container(border=True):
+        col_b1, col_b2 = st.columns(2)
 
-    with col_b1:
-        st.download_button(
-            label="[📤] Exportar para Excel",
-            data=to_excel(st.session_state.planilhas[nome]),
-            file_name=f"{nome}.xlsx",
-            key=f"btn_download_final_excel_{nome}"
-        )
+        with col_b1:
+            st.markdown("<div style='padding-top: 10px;'></div>", unsafe_allow_html=True)
+            st.download_button(
+                label="[📤] Exportar para Excel",
+                data=to_excel(st.session_state.planilhas[nome]),
+                file_name=f"{nome}.xlsx",
+                key=f"btn_download_final_excel_{nome}",
+                use_container_width=True
+            )
 
-    with col_b2:
-        df_calc = st.session_state.planilhas[nome]
-        if "Valor" in df_calc.columns:
-            total = pd.to_numeric(df_calc["Valor"], errors="coerce").sum()
-            st.success(f"Total de valores em {nome}: {total:,.2f}")
-        else:
-            st.info("Nenhuma coluna 'Valor' encontrada.")
+        with col_b2:
+            df_calc = st.session_state.planilhas[nome]
+            if "Valor" in df_calc.columns:
+                total = pd.to_numeric(df_calc["Valor"], errors="coerce").sum()
+                st.info(f"**Total Geral:** \n\n R$ {total:,.2f}")
+            else:
+                st.warning("Nenhuma coluna 'Valor' encontrada.")

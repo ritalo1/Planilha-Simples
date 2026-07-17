@@ -40,7 +40,9 @@ Usuário:
     return resposta.text.strip()
 
 def resumo_planilha(df):
-    amostra = df.head(50).to_markdown(index=False)
+    # usa CSV em vez de markdown, pra não depender de tabulate
+    amostra = df.head(50).to_csv(index=False)
+
     prompt = f"""
 Você é um DBA sênior explicando dados para um usuário leigo.
 Explique de forma simples e breve o que essa planilha mostra:
@@ -50,9 +52,9 @@ Explique de forma simples e breve o que essa planilha mostra:
 - possíveis inconsistências
 - qualquer insight útil
 
-Não use termos técnicos. Não use SQL.
+Não use termos técnicos. Não use SQL, mas explique e resuma o que entendeu. Se não entender algo, foque e detalhe outros pontos.
 
-Planilha (amostra):
+Planilha (amostra em CSV):
 {amostra}
 """
     resposta = MODEL.generate_content(prompt)

@@ -1,7 +1,10 @@
 import google.generativeai as genai
 import os
 
-genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+API_KEY = st.secrets.get("GEMINI_API_KEY")
+  if API_KEY is None:
+    raise RuntimeError("❌ GEMINI_API_KEY não foi carregado pelo Streamlit Cloud.")
+genai.configure(api_key=API_KEY)
 
 def corrigir_sql(query):
     prompt = f"""

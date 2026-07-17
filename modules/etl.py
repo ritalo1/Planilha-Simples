@@ -6,6 +6,12 @@ CATEGORIAS = [
     "Saúde", "Lazer", "Educação", "Outros"
 ]
 
+def limpar_planilha(df, usar_ia=False, ia_resumo_fn=None, instrucoes_ia=""):
+    if usar_ia and instrucoes_ia:
+        # Você junta o prompt padrão do seu ETL com o pedido do usuário:
+        prompt_completo = f"Instruções extras do usuário para aplicar no arquivo: {instrucoes_ia}"
+        # ... envia o prompt_completo para a IA ...
+
 def limpar_planilha(df, usar_ia=False, ia_resumo_fn=None):
     df = df.copy()
 

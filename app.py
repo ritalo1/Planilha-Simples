@@ -84,7 +84,7 @@ df = st.session_state.planilhas[nome_planilha]
 
 if pagina == "[🏠] Início":
     render_home()
-  elif pagina == "[🧾] Planilhas":
+      elif pagina == "[🧾] Planilhas":
 
 if pagina == "[📈] Dashboard":
     st.markdown(

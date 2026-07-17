@@ -3,4 +3,5 @@ pandas
 duckdb
 altair
 xlsxwriter
+openpyxl
 google-generativeai

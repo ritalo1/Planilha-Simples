@@ -10,68 +10,84 @@ CATEGORIAS = [
 def limpar_planilha(df):
     linhas_antes = len(df)
 
-    # Remove colunas Unnamed, mas não mexe em conteúdo válido
+    # Remove colunas Unnamed
     df = df.loc[:, ~df.columns.str.contains("^Unnamed", case=False, na=False)].copy()
 
-    # Padroniza nomes das colunas sem alterar dados
+    # Padroniza nomes das colunas
     df.columns = df.columns.str.strip().str.title()
 
+    # Garante colunas esperadas
     colunas_esperadas = ["Descrição", "Categoria", "Data", "Valor", "Observações"]
     for col in colunas_esperadas:
         if col not in df.columns:
             df[col] = None
 
-    # Descrição: só strip, nunca apagar conteúdo
-    df["Descrição"] = df["Descrição"].astype(str).str.strip()
+    # Tratamento célula por célula (estilo Excel)
+    for linha in df.index:
+        for coluna in df.columns:
 
-    # Categoria: normaliza e corrige apenas inválidas
-    df["Categoria"] = df["Categoria"].astype(str).str.strip()
-    df.loc[~df["Categoria"].isin(CATEGORIAS), "Categoria"] = "Outros"
+            valor = df.at[linha, coluna]
 
-    # Observações: só strip
-    df["Observações"] = df["Observações"].astype(str).str.strip()
+            # ============================
+            # DESCRIÇÃO
+            # ============================
+            if coluna == "Descrição":
+                if valor is None:
+                    df.at[linha, coluna] = ""
+                else:
+                    df.at[linha, coluna] = str(valor).strip()
 
-    # Data: só converte strings plausíveis, preserva timestamps e textos
-    def trata_data(x):
-        if isinstance(x, pd.Timestamp):
-            return x
-        if isinstance(x, str) and x.strip():
-            try:
-                return pd.to_datetime(x, errors="raise")
-            except Exception:
-                return x  # preserva texto original
-        return None
+            # ============================
+            # CATEGORIA
+            # ============================
+            elif coluna == "Categoria":
+                if valor is None or str(valor).strip() == "":
+                    df.at[linha, coluna] = "Outros"
+                else:
+                    texto = str(valor).strip()
+                    df.at[linha, coluna] = texto if texto in CATEGORIAS else "Outros"
 
-    df["Data"] = df["Data"].apply(trata_data)
+            # ============================
+            # DATA
+            # ============================
+            elif coluna == "Data":
+                if isinstance(valor, pd.Timestamp):
+                    continue
+                if isinstance(valor, str) and valor.strip():
+                    try:
+                        df.at[linha, coluna] = pd.to_datetime(valor, errors="raise")
+                    except:
+                        df.at[linha, coluna] = valor  # preserva texto
+                else:
+                    df.at[linha, coluna] = None
 
-    # Valor: qualquer coisa não claramente numérica vira 0.1
-    def limpar_valor(v):
-        # já é número → mantém
-        if isinstance(v, (int, float)):
-            return float(v)
+            # ============================
+            # VALOR
+            # ============================
+            elif coluna == "Valor":
+                if isinstance(valor, (int, float)):
+                    continue
+                if isinstance(valor, str) and valor.strip():
+                    raw = valor.replace("R$", "").replace(" ", "").replace(".", "").replace(",", ".")
+                    try:
+                        df.at[linha, coluna] = float(raw)
+                    except:
+                        df.at[linha, coluna] = 0.1  # qualquer caractere vira 0.1
+                else:
+                    df.at[linha, coluna] = 0.1
 
-        # string que parece número → tenta converter
-        if isinstance(v, str) and v.strip():
-            raw = v.replace("R$", "").replace(" ", "").replace(".", "").replace(",", ".")
-            try:
-                return float(raw)
-            except Exception:
-                return 0.1  # qualquer caractere / texto vira 0.1
-
-        # qualquer outra coisa → 0.1
-        return 0.1
-
-    df["Valor"] = df["Valor"].apply(limpar_valor)
-
-    # não força zero em tudo, já tratamos não numéricos como 0.1
-    valores_nulos_corrigidos = df["Valor"].isna().sum()
-    df["Valor"] = df["Valor"].fillna(0.1)
-
-    df = df.dropna(how="all")
+            # ============================
+            # OBSERVAÇÕES
+            # ============================
+            elif coluna == "Observações":
+                if valor is None:
+                    df.at[linha, coluna] = ""
+                else:
+                    df.at[linha, coluna] = str(valor).strip()
 
     st.success(
-        f"🧹 ETL concluído: {len(df)} linhas (antes: {linhas_antes}), "
-        f"{valores_nulos_corrigidos} valores nulos corrigidos."
+        f"🧹 ETL concluído: {len(df)} linhas (antes: {linhas_antes}). "
+        f"Tratamento célula por célula concluído."
     )
 
     return df[colunas_esperadas]

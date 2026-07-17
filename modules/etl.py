@@ -31,7 +31,7 @@ def limpar_planilha(df):
     # Observações: só strip
     df["Observações"] = df["Observações"].astype(str).str.strip()
 
-    # Data: só converte strings plausíveis, preserva timestamps
+    # Data: só converte strings plausíveis, preserva timestamps e textos
     def trata_data(x):
         if isinstance(x, pd.Timestamp):
             return x
@@ -39,35 +39,39 @@ def limpar_planilha(df):
             try:
                 return pd.to_datetime(x, errors="raise")
             except Exception:
-                return x
+                return x  # preserva texto original
         return None
 
     df["Data"] = df["Data"].apply(trata_data)
 
-    # Valor: só converte se claramente numérico
+    # Valor: qualquer coisa não claramente numérica vira 0.1
     def limpar_valor(v):
+        # já é número → mantém
         if isinstance(v, (int, float)):
             return float(v)
+
+        # string que parece número → tenta converter
         if isinstance(v, str) and v.strip():
             raw = v.replace("R$", "").replace(" ", "").replace(".", "").replace(",", ".")
             try:
                 return float(raw)
             except Exception:
-                return v  # preserva texto inválido
-        return None
+                return 0.1  # qualquer caractere / texto vira 0.1
+
+        # qualquer outra coisa → 0.1
+        return 0.1
 
     df["Valor"] = df["Valor"].apply(limpar_valor)
 
-    # Não força zero em tudo: só preenche nulos numéricos
-    mask_num = df["Valor"].apply(lambda x: isinstance(x, (int, float, float)))
+    # não força zero em tudo, já tratamos não numéricos como 0.1
     valores_nulos_corrigidos = df["Valor"].isna().sum()
-    df.loc[mask_num & df["Valor"].isna(), "Valor"] = 0.0
+    df["Valor"] = df["Valor"].fillna(0.1)
 
     df = df.dropna(how="all")
 
     st.success(
         f"🧹 ETL concluído: {len(df)} linhas (antes: {linhas_antes}), "
-        f"{valores_nulos_corrigidos} valores nulos numéricos corrigidos."
+        f"{valores_nulos_corrigidos} valores nulos corrigidos."
     )
 
     return df[colunas_esperadas]

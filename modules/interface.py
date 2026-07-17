@@ -18,6 +18,7 @@ def render_header():
 def render_sidebar():
     st.sidebar.markdown("### [⚙️] Navegação")
     
+    # Bloco único e corrigido de navegação contendo a Home
     try:
         pagina = st.sidebar.segmented_control(
             "Escolha a página:",
@@ -29,20 +30,6 @@ def render_sidebar():
         pagina = st.sidebar.radio(
             "Escolha a página:",
             ["[🏠] Início", "[📈] Dashboard", "[💻] Console SQL", "[🧾] Planilhas"]
-        )
-        
-    # Tenta usar o componente moderno; se a versão do Streamlit for antiga, usa o rádio horizontal
-    try:
-        pagina = st.sidebar.segmented_control(
-            "Escolha a página:",
-            ["[📈] Dashboard", "[💻] Console SQL", "[🧾] Planilhas"],
-            default="[🧾] Planilhas",
-            label_visibility="collapsed"
-        )
-    except AttributeError:
-        pagina = st.sidebar.radio(
-            "Escolha a página:",
-            ["[📈] Dashboard", "[💻] Console SQL", "[🧾] Planilhas"]
         )
 
     st.sidebar.markdown("---")
@@ -63,7 +50,6 @@ def render_sidebar():
     st.sidebar.markdown("---")
 
     st.sidebar.markdown("#### [🤖] Assistente IA")
-    # Caixinha em volta da ativação da IA para dar destaque
     with st.sidebar.container(border=True):
         ia_on = st.checkbox("Ativar PocketDBA (Gemini)", value=False)
         st.session_state.ia_on = ia_on

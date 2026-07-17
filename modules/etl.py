@@ -6,7 +6,7 @@ CATEGORIAS = [
     "Saúde", "Lazer", "Educação", "Outros"
 ]
 
-def limpar_planilha(df):
+def limpar_planilha(df, usar_ia=False, ia_resumo_fn=None):
     df = df.copy()
 
     # Padroniza nomes das colunas
@@ -18,21 +18,18 @@ def limpar_planilha(df):
         if col not in df.columns:
             df[col] = None
 
-    # Tratamento célula por célula
+    # Tratamento célula por célula (sem 0.1)
     for linha in df.index:
         for coluna in df.columns:
             valor = df.at[linha, coluna]
 
-            # DESCRIÇÃO
             if coluna == "Descrição":
                 df.at[linha, coluna] = "" if valor is None else str(valor).strip()
 
-            # CATEGORIA
             elif coluna == "Categoria":
                 texto = str(valor).strip() if valor else "Outros"
                 df.at[linha, coluna] = texto if texto in CATEGORIAS else "Outros"
 
-            # DATA
             elif coluna == "Data":
                 if isinstance(valor, pd.Timestamp):
                     continue
@@ -44,7 +41,6 @@ def limpar_planilha(df):
                 else:
                     df.at[linha, coluna] = None
 
-            # VALOR
             elif coluna == "Valor":
                 if isinstance(valor, (int, float)):
                     continue
@@ -53,17 +49,20 @@ def limpar_planilha(df):
                     try:
                         df.at[linha, coluna] = float(raw)
                     except:
-                        df.at[linha, coluna] = 0.1
+                        df.at[linha, coluna] = None
                 else:
-                    df.at[linha, coluna] = 0.1
+                    df.at[linha, coluna] = None
 
-            # OBSERVAÇÕES
             elif coluna == "Observações":
                 df.at[linha, coluna] = "" if valor is None else str(valor).strip()
 
     # Organiza por categoria
     df = df.sort_values(by="Categoria")
 
-    st.success("🧹 Planilha limpa e organizada por categoria.")
+    if usar_ia and ia_resumo_fn is not None:
+        resumo = ia_resumo_fn(df)
+        st.info(f"[🤖] PocketDBA auxiliou na limpeza:\n\n{resumo}")
+    else:
+        st.success("🧹 Planilha limpa e organizada por categoria.")
 
-    return df[colunas_esperadas] 
+    return df[colunas_esperadas]

@@ -10,7 +10,7 @@ def render_home():
             </h1>
             <h3 style="color: #FAFAFA; font-weight: 400; margin-top: 5px;">Seu ecossistema inteligente de dados</h3>
             <p style="font-size: 1.1rem; color: #BBBBBB; max-width: 700px; margin: 15px auto 30px auto; line-height: 1.6;">
-                Um projeto independente voltado para <b>análise, tratamento, limpeza, formatação e condicionamento</b>. 
+                Um projeto independente voltado para <b>análise, tratamento, limpeza, formatação e condicionamento de dados</b>. 
                 Obtenha direcionamentos claros e insights automatizados a partir de dados importados ou preenchidos.
             </p>
         </div>

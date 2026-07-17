@@ -9,7 +9,6 @@ from modules.ia_sql import resumo_planilha
 def _col_letters(n_cols):
     letras = []
     for i in range(n_cols):
-        # estilo Excel: A, B, ..., Z, AA, AB...
         div, mod = divmod(i, 26)
         letra = ascii_uppercase[mod]
         if div > 0:
@@ -93,7 +92,7 @@ def render_planilhas(df, nome):
         usar_ia = st.checkbox(
             "Com auxílio do PocketDBA",
             value=False,
-            key=f"ia_limpar_{novo_nome}
+            key=f"ia_limpar_{novo_nome}"
         )
 
     if limpar:

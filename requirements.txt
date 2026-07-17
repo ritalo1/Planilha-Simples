@@ -4,4 +4,4 @@ duckdb
 altair
 xlsxwriter
 openpyxl
-google-generativeai
+google-genai

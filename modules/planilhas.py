@@ -26,11 +26,17 @@ def render_planilhas(df, nome):
         unsafe_allow_html=True
     )
 
-    # Estado global das planilhas no session_state
+    # Estado global das planilhas e dos logs de auditoria no session_state
     if "planilhas" not in st.session_state:
         st.session_state.planilhas = {}
     if nome not in st.session_state.planilhas:
         st.session_state.planilhas[nome] = df
+        
+    # Inicializa o cache do relatório da IA para não perder no clique dos botões
+    if "ultimo_resumo_ia" not in st.session_state:
+        st.session_state.ultimo_resumo_ia = {}
+    if nome not in st.session_state.ultimo_resumo_ia:
+        st.session_state.ultimo_resumo_ia[nome] = None
 
     # ==========================================
     # 1. IMPORTAÇÃO DE ARQUIVOS
@@ -51,6 +57,7 @@ def render_planilhas(df, nome):
 
         df_importado = df_importado.loc[:, ~df_importado.columns.duplicated()].copy()
         st.session_state.planilhas[nome] = df_importado
+        st.session_state.ultimo_resumo_ia[nome] = None # Reseta o resumo para a nova planilha
         st.success("[📐] Planilha importada com sucesso.")
 
     # Puxa os dados atuais para renderização
@@ -126,25 +133,32 @@ def render_planilhas(df, nome):
     # Disparo do processo de ETL
     if limpar_simples or limpar_com_ia:
         with st.spinner("PocketDBA processando o pipeline de ETL..."):
+            # 1. Executa a limpeza estrutural de dados primeiro
             df_limpo = limpar_planilha(
                 df_atual,
-                usar_ia=usar_ia,
-                ia_resumo_fn=resumo_planilha if usar_ia else None,
-                instrucoes_ia=prompt_usuario if usar_ia else ""
+                usar_ia=False, # Tratamos a IA direto aqui para blindar o retorno
+                ia_resumo_fn=None
             )
+            
+            # 2. Se o usuário usou a IA, disparada de forma isolada e segura
+            if limpar_com_ia and usar_ia:
+                relatorio_ia = resumo_planilha(df_limpo, instrucoes_ia=prompt_usuario)
+                st.session_state.ultimo_resumo_ia[nome] = {
+                    "prompt": prompt_usuario if prompt_usuario else "Limpeza padrão de IA.",
+                    "resultado": relatorio_ia
+                }
         
         st.session_state.planilhas[nome] = df_limpo
         st.success("Planilha processada com sucesso!")
-        
-        # Logs ocultos salvos no expander para não poluir o celular
-        if usar_ia:
-            with st.expander("📋 Ver detalhes técnicos e logs do PocketDBA"):
-                st.markdown("**Instruções aplicadas no pipeline:**")
-                st.code(prompt_usuario if prompt_usuario else "Limpeza padrão de IA.")
-                st.markdown("**Relatório de Auditoria:**")
-                st.write(resumo_planilha(df_limpo))
-        
         st.rerun()
+
+    # Renderiza o expander caso exista um relatório salvo no estado da sessão
+    if st.session_state.ultimo_resumo_ia[nome] is not None:
+        with st.expander("📋 Ver detalhes técnicos e logs do PocketDBA", expanded=True):
+            st.markdown("**Instruções aplicadas no pipeline:**")
+            st.code(st.session_state.ultimo_resumo_ia[nome]["prompt"])
+            st.markdown("**Relatório de Auditoria:**")
+            st.markdown(st.session_state.ultimo_resumo_ia[nome]["resultado"], unsafe_allow_html=True)
 
     # ==========================================
     # 5. BLOCO DE AÇÕES FINAIS

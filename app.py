@@ -4,7 +4,6 @@ import pandas as pd
 from modules.interface import render_header, render_sidebar
 from modules.console_sql import render_console_sql
 from modules.planilhas import render_planilhas
-from modules.utils import aplicar_filtros
 
 # Estado inicial
 if "planilhas" not in st.session_state:

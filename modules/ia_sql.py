@@ -26,10 +26,12 @@ SQL:
             model=MODEL_NAME,
             contents=prompt,
             config={
-                "max_output_tokens": 300,
-                "temperature": 0.1  # Ultra focado e direto
+                "max_output_tokens": 450, 
+                "temperature": 0.2        
             }
         )
+        
+        # RETORNO LIMPO: Sem HTML aqui dentro para não bugar o Streamlit
         return resp.text.strip()
     except errors.ServerError:
         return "-- ⚠️ Servidor Gemini instável. Tente enviar a query novamente."

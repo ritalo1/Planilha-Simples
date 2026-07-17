@@ -4,6 +4,7 @@ import pandas as pd
 from modules.interface import render_header, render_sidebar
 from modules.console_sql import render_console_sql
 from modules.planilhas import render_planilhas
+from modules.home import render_home
 
 # Estado inicial
 if "planilhas" not in st.session_state:
@@ -80,6 +81,10 @@ if st.session_state.get("ia_on", False):
 # Página
 nome_planilha = "Principal"
 df = st.session_state.planilhas[nome_planilha]
+
+if pagina == "[🏠] Início":
+    render_home()
+elif pagina == "[🧾] Planilhas":
 
 if pagina == "[📈] Dashboard":
     st.markdown(

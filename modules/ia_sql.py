@@ -1,14 +1,17 @@
 import streamlit as st
-import google.generativeai as genai
+from google import genai
 
+# 1. Puxando a chave com segurança do cofre do Streamlit
 API_KEY = st.secrets.get("GEMINI_API_KEY")
 if API_KEY is None:
     raise RuntimeError("❌ GEMINI_API_KEY não foi carregado pelo Streamlit Cloud.")
 
-genai.configure(api_key=API_KEY)
+# 2. Inicializando o cliente moderno do Google
+client = genai.Client(api_key=API_KEY)
 
-# MODELO CORRETO PARA STREAMLIT CLOUD (v1beta)
-MODEL = genai.GenerativeModel("models/gemini-1.5-flash")
+# Definindo o modelo estável e moderno para a API gratuita
+MODEL_NAME = 'gemini-2.5-flash'
+
 
 def corrigir_sql(query):
     prompt = f"""
@@ -18,8 +21,13 @@ Corrija o SQL abaixo e retorne APENAS o código SQL corrigido.
 SQL:
 {query}
 """
-    resposta = MODEL.generate_text(prompt)
+    # Usando o método moderno padrão: generate_content
+    resposta = client.models.generate_content(
+        model=MODEL_NAME,
+        contents=prompt,
+    )
     return resposta.text.strip()
+
 
 def chat_dba(mensagem, historico):
     prompt = f"""
@@ -32,8 +40,12 @@ Histórico:
 Usuário:
 {mensagem}
 """
-    resposta = MODEL.generate_text(prompt)
+    resposta = client.models.generate_content(
+        model=MODEL_NAME,
+        contents=prompt,
+    )
     return resposta.text.strip()
+
 
 def resumo_planilha(df):
     amostra = df.head(50).to_csv(index=False)
@@ -52,5 +64,8 @@ Não use termos técnicos. Não use SQL, mas resuma o que você entendeu. Caso n
 Planilha (amostra em CSV):
 {amostra}
 """
-    resposta = MODEL.generate_text(prompt)
+    resposta = client.models.generate_content(
+        model=MODEL_NAME,
+        contents=prompt,
+    )
     return resposta.text.strip()

@@ -12,13 +12,9 @@ MODEL = genai.GenerativeModel("gemini-1.5-flash")
 def corrigir_sql(query):
     prompt = f"""
 Você é um DBA sênior especialista.
-Seu papel é analisar o input SQL do usuário, corrigir erros de sintaxe comuns
-e retornar APENAS o código SQL corrigido, sem explicações.
+Corrija o SQL abaixo e retorne APENAS o código SQL corrigido.
 
-Você NÃO pode gerar código Python, nem editar arquivos do app.
-Apenas SQL.
-
-SQL do usuário:
+SQL:
 {query}
 """
     resposta = MODEL.generate_content(prompt)
@@ -27,8 +23,7 @@ SQL do usuário:
 def chat_dba(mensagem, historico):
     prompt = f"""
 Você é um DBA sênior especialista.
-Responda de forma clara e objetiva, focando em dados, SQL e boas práticas.
-Você NÃO pode editar o código do app, apenas orientar o usuário.
+Responda de forma clara e objetiva, sem termos técnicos.
 
 Histórico:
 {historico}
@@ -40,7 +35,7 @@ Usuário:
     return resposta.text.strip()
 
 def resumo_planilha(df):
-    # usa CSV em vez de markdown, pra não depender de tabulate
+    # CSV é 100% seguro no Streamlit Cloud
     amostra = df.head(50).to_csv(index=False)
 
     prompt = f"""
@@ -52,7 +47,7 @@ Explique de forma simples e breve o que essa planilha mostra:
 - possíveis inconsistências
 - qualquer insight útil
 
-Não use termos técnicos. Não use SQL, mas explique e resuma o que entendeu. Se não entender algo, foque e detalhe outros pontos.
+Não use termos técnicos. Não use SQL, mas resuma o que voce entendeu. Caso não tenha entendido algo, foque em outros detalhes e entregue o relatório.
 
 Planilha (amostra em CSV):
 {amostra}

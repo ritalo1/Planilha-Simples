@@ -5,3 +5,4 @@ openpyxl
 xlsxwriter
 python-dateutil
 duckdb
+google-generativeai==0.3.0
